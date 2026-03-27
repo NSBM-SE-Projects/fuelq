@@ -52,3 +52,6 @@ firebase_options.dart
 local.properties
 .env
 
+# Claude
+CLAUDE.md
+

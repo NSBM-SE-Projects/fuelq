@@ -11,19 +11,20 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return ref.watch(firebaseAuthProvider).authStateChanges();
 });
 
-final userProvider = FutureProvider<UserModel?>((ref) async {
+final userProvider = StreamProvider<UserModel?>((ref) {
   final authState = ref.watch(authStateProvider);
   final user = authState.valueOrNull;
-  if (user == null) return null;
+  if (user == null) return Stream.value(null);
 
-  final doc = await ref
+  return ref
       .watch(firestoreProvider)
       .collection('users')
       .doc(user.uid)
-      .get();
-
-  if (!doc.exists) return null;
-  return UserModel.fromMap(doc.data()!);
+      .snapshots()
+      .map((doc) {
+    if (!doc.exists) return null;
+    return UserModel.fromMap(doc.data()!);
+  });
 });
 
 final vehiclesProvider = StreamProvider<List<VehicleModel>>((ref) {

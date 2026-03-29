@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -49,16 +50,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
 
       if (mounted && credential.user != null) {
-        context.go(
-          '/role-selection',
-          extra: {
-            'uid': credential.user!.uid,
-            'name': _nameController.text.trim(),
-            'email': _emailController.text.trim(),
-            'phone': _phoneController.text.trim(),
-            'nic': _nicController.text.trim(),
-          },
+        final user = UserModel(
+          uid: credential.user!.uid,
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          phone: _phoneController.text.trim(),
+          nic: _nicController.text.trim(),
+          role: UserRole.vehicleOwner,
+          createdAt: DateTime.now(),
         );
+
+        await ref.read(authServiceProvider).saveUserData(user);
+
+        if (mounted) {
+          context.go('/add-vehicle', extra: {
+            'uid': credential.user!.uid,
+            'isFirstTime': true,
+          });
+        }
       }
     } on Exception catch (e) {
       if (mounted) {

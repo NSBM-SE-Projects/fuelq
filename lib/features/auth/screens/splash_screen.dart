@@ -110,7 +110,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 ),
                 child: ClipOval(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(8),
                     child: Image.asset(
                       'assets/images/logo.png',
                       fit: BoxFit.contain,

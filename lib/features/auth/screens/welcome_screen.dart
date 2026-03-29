@@ -55,7 +55,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                       child: ClipOval(
                         child: Padding(
-                          padding: const EdgeInsets.all(14),
+                          padding: const EdgeInsets.all(6),
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,

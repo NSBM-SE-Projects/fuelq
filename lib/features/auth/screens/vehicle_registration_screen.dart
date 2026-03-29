@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/validators.dart';
 import '../models/vehicle_model.dart';
 import '../providers/auth_provider.dart';
 
@@ -230,12 +231,7 @@ class _VehicleRegistrationScreenState
                               color: AppColors.primarySoft,
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter vehicle number';
-                            }
-                            return null;
-                          },
+                          validator: Validators.vehicleNumber,
                         ),
                         const SizedBox(height: 20),
                         _buildLabel('CHASSIS NUMBER'),
@@ -250,12 +246,7 @@ class _VehicleRegistrationScreenState
                               color: AppColors.primarySoft,
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter chassis number';
-                            }
-                            return null;
-                          },
+                          validator: Validators.chassisNumber,
                         ),
                         const SizedBox(height: 20),
                         _buildLabel('VEHICLE NICKNAME (OPTIONAL)'),

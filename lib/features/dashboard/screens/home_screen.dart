@@ -79,10 +79,7 @@ class HomeScreen extends ConsumerWidget {
                           ],
                         ),
                         GestureDetector(
-                          onTap: () async {
-                            await ref.read(authServiceProvider).signOut();
-                            if (context.mounted) context.go('/');
-                          },
+                          onTap: () => context.push('/profile'),
                           child: Container(
                             width: 44,
                             height: 44,
@@ -91,7 +88,7 @@ class HomeScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: const Icon(
-                              Icons.logout_rounded,
+                              Icons.person_rounded,
                               color: Colors.white,
                               size: 20,
                             ),

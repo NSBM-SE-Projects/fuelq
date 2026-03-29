@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/validators.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -159,12 +160,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: AppColors.primarySoft,
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your name';
-                        }
-                        return null;
-                      },
+                      validator: Validators.name,
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('EMAIL'),
@@ -179,15 +175,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: AppColors.primarySoft,
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!value.contains('@')) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
+                      validator: Validators.email,
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('PHONE NUMBER'),
@@ -202,12 +190,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: AppColors.primarySoft,
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your phone number';
-                        }
-                        return null;
-                      },
+                      validator: Validators.phone,
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('NIC NUMBER'),
@@ -221,12 +204,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: AppColors.primarySoft,
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your NIC number';
-                        }
-                        return null;
-                      },
+                      validator: Validators.nic,
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('PASSWORD'),
@@ -252,15 +230,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a password';
-                        }
-                        if (value.length < 6) {
-                          return 'Password must be at least 6 characters';
-                        }
-                        return null;
-                      },
+                      validator: Validators.password,
                     ),
                     const SizedBox(height: 20),
                     _buildLabel('CONFIRM PASSWORD'),
@@ -286,12 +256,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                         ),
                       ),
-                      validator: (value) {
-                        if (value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
+                      validator: Validators.confirmPassword(_passwordController.text),
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(

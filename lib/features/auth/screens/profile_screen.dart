@@ -270,7 +270,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           onPressed: () async {
                             await ref.read(authServiceProvider).signOut();
-                            if (context.mounted) context.go('/');
+                            if (context.mounted) context.go('/welcome');
                           },
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,

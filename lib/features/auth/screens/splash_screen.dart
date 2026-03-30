@@ -42,10 +42,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final user = authState.valueOrNull;
 
     if (user != null) {
-      // Check if user has profile data
-      final userData = await ref.read(userProvider.future);
+      // Check if user has profile data by reading Firestore directly
+      final doc = await ref
+          .read(firestoreProvider)
+          .collection('users')
+          .doc(user.uid)
+          .get();
       if (mounted) {
-        if (userData != null) {
+        if (doc.exists) {
           context.go('/home');
         } else {
           // Signed in but no profile — go to welcome
@@ -81,7 +85,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           ),
         ),
         child: AnimatedBuilder(
-          listenable: _controller,
+          animation: _controller,
           builder: (context, child) {
             return Opacity(
               opacity: _fadeIn.value,
@@ -155,19 +159,3 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 }
 
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required super.listenable,
-    required this.builder,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, child);
-  }
-}

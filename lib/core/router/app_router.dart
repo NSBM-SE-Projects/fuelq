@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,10 +65,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const WelcomeScreen(),
       ),
       GoRoute(
-        path: '/',
-        builder: (context, state) => const WelcomeScreen(),
-      ),
-      GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
@@ -103,7 +100,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 /// Notifies GoRouter when auth state changes so redirect re-evaluates.
 class _RouterRefreshStream extends ChangeNotifier {
+  late final ProviderSubscription<AsyncValue<User?>> _subscription;
+
   _RouterRefreshStream(Ref ref) {
-    ref.listen(authStateProvider, (_, _) => notifyListeners());
+    _subscription = ref.listen(authStateProvider, (_, __) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _subscription.close();
+    super.dispose();
   }
 }

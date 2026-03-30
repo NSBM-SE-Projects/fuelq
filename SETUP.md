@@ -38,6 +38,8 @@ Windows:
 setup.bat
 ```
 
+Note: Run in Command Prompt if it isn't running
+
 ## Step 4 -> Run the app
 
 ```

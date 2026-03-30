@@ -11,6 +11,8 @@ import '../../features/auth/screens/vehicle_registration_screen.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
+import '../../features/qr/screens/qr_display_screen.dart';
+import '../../features/qr/screens/qr_scanner_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -94,6 +96,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
       ),
+      GoRoute(
+        path: '/qr-display',
+        builder: (context, state) => const QrDisplayScreen(),
+      ),
+      GoRoute(
+        path: '/qr-scanner',
+        builder: (context, state) => const QrScannerScreen(),
+      ),
     ],
   );
 });
@@ -103,7 +113,7 @@ class _RouterRefreshStream extends ChangeNotifier {
   late final ProviderSubscription<AsyncValue<User?>> _subscription;
 
   _RouterRefreshStream(Ref ref) {
-    _subscription = ref.listen(authStateProvider, (_, __) => notifyListeners());
+    _subscription = ref.listen(authStateProvider, (_, _) => notifyListeners());
   }
 
   @override

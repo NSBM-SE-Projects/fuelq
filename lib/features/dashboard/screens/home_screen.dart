@@ -27,7 +27,6 @@ class HomeScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // Blue header
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(
@@ -140,7 +139,7 @@ class HomeScreen extends ConsumerWidget {
                           _QuickAction(
                             icon: Icons.qr_code_rounded,
                             label: 'My QR',
-                            onTap: () {},
+                            onTap: () => context.push('/qr-display'),
                           ),
                         ],
                       ),
@@ -367,7 +366,8 @@ class _VehicleListItem extends StatelessWidget {
             _DetailRow(
               icon: Icons.local_gas_station_outlined,
               label: 'Fuel Type',
-              value: vehicle.fuelType.name[0].toUpperCase() +
+              value:
+                  vehicle.fuelType.name[0].toUpperCase() +
                   vehicle.fuelType.name.substring(1),
             ),
             if (vehicle.nickname.isNotEmpty)

@@ -13,13 +13,11 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-
   return GoRouter(
     initialLocation: '/splash',
     refreshListenable: _RouterRefreshStream(ref),
     redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull != null;
+      final isLoggedIn = ref.read(authStateProvider).valueOrNull != null;
       final currentPath = state.uri.path;
 
       // Public routes that don't require auth
@@ -32,7 +30,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ];
 
       // Routes that are part of registration flow
-      const registrationRoutes = ['/add-vehicle'];
+      const registrationRoutes = ['/add-vehicle', '/register'];
 
       final isPublicRoute = publicRoutes.contains(currentPath);
       final isRegistrationRoute = registrationRoutes.contains(currentPath);

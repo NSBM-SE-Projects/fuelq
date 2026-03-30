@@ -126,14 +126,14 @@ class HomeScreen extends ConsumerWidget {
                       Row(
                         children: [
                           _QuickAction(
-                            icon: Icons.calendar_today_rounded,
-                            label: 'Book Slot',
-                            onTap: () {},
+                            icon: Icons.water_drop_rounded,
+                            label: 'My Quota',
+                            onTap: () => context.push('/quota'),
                           ),
                           const SizedBox(width: 12),
                           _QuickAction(
-                            icon: Icons.map_rounded,
-                            label: 'Find Station',
+                            icon: Icons.calendar_today_rounded,
+                            label: 'Book Slot',
                             onTap: () {},
                           ),
                           const SizedBox(width: 12),

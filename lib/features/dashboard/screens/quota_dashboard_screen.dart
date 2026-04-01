@@ -89,7 +89,6 @@ class QuotaDashboardScreen extends ConsumerWidget {
                       child: _QuotaRing(
                         usagePercent: summary.usagePercent,
                         remaining: summary.totalRemaining,
-                        total: summary.totalLimit,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -194,12 +193,10 @@ class _HeaderStat extends StatelessWidget {
 class _QuotaRing extends StatelessWidget {
   final double usagePercent;
   final double remaining;
-  final double total;
 
   const _QuotaRing({
     required this.usagePercent,
     required this.remaining,
-    required this.total,
   });
 
   @override
@@ -245,7 +242,7 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 8;
-    const strokeWidth = 10.0;
+    const strokeWidth = 20.0;
 
     final bgPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.15)
@@ -309,7 +306,7 @@ class _WeekInfoCard extends StatelessWidget {
   }
 
   int _daysLeft() {
-    return weekEnd.difference(DateTime.now()).inDays.clamp(0, 7);
+    return weekEnd.difference(DateTime.now()).inDays.ceil().clamp(0, 7);
   }
 
   @override

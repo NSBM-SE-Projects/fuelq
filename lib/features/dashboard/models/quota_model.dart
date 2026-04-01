@@ -42,6 +42,20 @@ class QuotaModel {
     );
   }
 
+  factory QuotaModel.fromVehicleDoc(String vehicleId, Map<String, dynamic> map) {
+    final fuelType = map['fuelType'] as String? ?? 'petrol';
+    return QuotaModel(
+      vehicleId: vehicleId,
+      vehicleNumber: map['vehicleNumber'] as String? ?? ' ',
+      nickname: map['nickname'] as String? ?? ' ',
+      fuelType: fuelType,
+      weeklyLimit: (map['weeklyLimit'] as num?)?.toDouble() ?? _defaultLimit(fuelType),
+      used: (map['used'] as num?)?.toDouble()  ?? 0,
+      weekStart: (map['weekStart'] as Timestamp?)?.toDate() ?? _currentWeekStart(),
+      weekEnd: (map['weekEnd'] as Timestamp?)?.toDate() ?? _currentWeekEnd(),
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'vehicleNumber': vehicleNumber,
@@ -55,7 +69,7 @@ class QuotaModel {
   }
 
   static double _defaultLimit(String fuelType) {
-    return fuelType == 'diesel' ? 20.0 : 14.0;
+    return fuelType == 'diesel' ? 32.0 : 16.0;
   }
 
   static DateTime _currentWeekStart() {

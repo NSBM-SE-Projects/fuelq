@@ -156,6 +156,37 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () => context.push('/station-attendant'),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 16, horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.local_gas_station_rounded,
+                                  color: Colors.white, size: 22),
+                              SizedBox(width: 12),
+                              Text(
+                                'Station Dashboard',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Spacer(),
+                              Icon(Icons.chevron_right_rounded,
+                                  color: Colors.white70),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 28),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

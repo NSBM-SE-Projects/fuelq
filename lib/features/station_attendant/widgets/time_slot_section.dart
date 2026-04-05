@@ -1,0 +1,277 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_colors.dart';
+import '../models/booking_model.dart';
+import '../providers/station_attendant_provider.dart';
+import 'booking_card.dart';
+
+class TimeSlotSection extends ConsumerStatefulWidget {
+  const TimeSlotSection({
+    super.key,
+    required this.slotLabel,
+    required this.bookings,
+  });
+
+  final String slotLabel;
+  final List<BookingModel> bookings;
+
+  @override
+  ConsumerState<TimeSlotSection> createState() => _TimeSlotSectionState();
+}
+
+class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _countdownLabel() {
+    if (widget.bookings.isEmpty) return '';
+    final slotTime = widget.bookings.first.slotTime;
+    final slotStart =
+        DateTime(slotTime.year, slotTime.month, slotTime.day, slotTime.hour);
+    final slotEnd = slotStart.add(const Duration(hours: 1));
+    final now = DateTime.now();
+
+    if (now.isBefore(slotStart)) {
+      final diff = slotStart.difference(now);
+      final mins = diff.inMinutes;
+      return mins < 60 ? 'in ${mins}m' : 'in ${diff.inHours}h';
+    } else if (now.isBefore(slotEnd)) {
+      return 'Active now';
+    } else {
+      return 'Ended';
+    }
+  }
+
+  void _confirmNoShow(BuildContext context, BookingModel booking) {
+    final notifier = ref.read(bookingsNotifierProvider.notifier);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Mark as No-Show?'),
+        content: Text(
+            '${booking.vehicleNumber} will be marked as a no-show. The slot will be released.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              notifier.markNoShow(booking.id);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bookings = widget.bookings;
+    final totalLitres =
+        bookings.fold<double>(0.0, (sum, b) => sum + b.litres);
+    final petrolCount =
+        bookings.where((b) => b.fuelType == 'Petrol').length;
+    final dieselCount =
+        bookings.where((b) => b.fuelType == 'Diesel').length;
+    final completedCount =
+        bookings.where((b) => b.status == BookingStatus.completed).length;
+    final countdown = _countdownLabel();
+    final isActive = countdown == 'Active now';
+    final notifier = ref.read(bookingsNotifierProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          color: AppColors.primary.withValues(alpha: 0.08),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.schedule,
+                  size: 15, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                widget.slotLabel,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 6),
+              if (countdown.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.success.withValues(alpha: 0.15)
+                        : AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    countdown,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isActive
+                          ? AppColors.success
+                          : AppColors.primary,
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              _SlotTag('${bookings.length} vehicles'),
+              const SizedBox(width: 6),
+              _SlotTag('${totalLitres.toStringAsFixed(0)}L total'),
+              if (petrolCount > 0) ...[
+                const SizedBox(width: 6),
+                _SlotTag('P:$petrolCount',
+                    color: Colors.orange.shade700),
+              ],
+              if (dieselCount > 0) ...[
+                const SizedBox(width: 6),
+                _SlotTag('D:$dieselCount',
+                    color: Colors.green.shade700),
+              ],
+            ],
+          ),
+        ),
+        LinearProgressIndicator(
+          value: bookings.isEmpty
+              ? 0
+              : completedCount / bookings.length,
+          backgroundColor: Colors.grey.shade200,
+          color: Colors.green,
+          minHeight: 3,
+        ),
+        ...bookings.map((b) {
+          final isDone = b.status == BookingStatus.completed ||
+              b.status == BookingStatus.noShow;
+          final isArrived = b.status == BookingStatus.arrived;
+
+          return Dismissible(
+            key: Key('${b.id}_${b.status.name}'),
+            direction: isDone
+                ? DismissDirection.none
+                : DismissDirection.horizontal,
+            confirmDismiss: (direction) async {
+              if (direction == DismissDirection.startToEnd) {
+                HapticFeedback.mediumImpact();
+                if (b.status == BookingStatus.confirmed) {
+                  notifier.markArrived(b.id);
+                } else if (isArrived) {
+                  notifier.markCompleted(b.id);
+                }
+              } else {
+                _confirmNoShow(context, b);
+              }
+              return false;
+            },
+            background: _SwipeBackground(
+              alignment: Alignment.centerLeft,
+              color: isArrived ? Colors.green : Colors.orange,
+              icon: isArrived
+                  ? Icons.check_circle_outline
+                  : Icons.directions_car,
+              label: isArrived ? 'Complete' : 'Arrived',
+              padding: const EdgeInsets.only(left: 28),
+            ),
+            secondaryBackground: const _SwipeBackground(
+              alignment: Alignment.centerRight,
+              color: Colors.red,
+              icon: Icons.cancel_outlined,
+              label: 'No-Show',
+              padding: EdgeInsets.only(right: 28),
+            ),
+            child: BookingCard(booking: b),
+          );
+        }),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+class _SwipeBackground extends StatelessWidget {
+  const _SwipeBackground({
+    required this.alignment,
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.padding,
+  });
+
+  final AlignmentGeometry alignment;
+  final Color color;
+  final IconData icon;
+  final String label;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: color,
+      alignment: alignment,
+      padding: padding,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SlotTag extends StatelessWidget {
+  const _SlotTag(this.text, {this.color = Colors.black54});
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+            fontSize: 11, color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}

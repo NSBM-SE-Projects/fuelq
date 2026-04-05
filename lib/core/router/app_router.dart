@@ -12,6 +12,7 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
 import '../../features/dashboard/screens/quota_dashboard_screen.dart';
+import '../../features/station_attendant/screens/station_attendant_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -19,37 +20,43 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     refreshListenable: _RouterRefreshStream(ref),
     redirect: (context, state) {
       final isLoggedIn = ref.read(authStateProvider).valueOrNull != null;
+      final user = ref.read(userProvider).valueOrNull;
       final currentPath = state.uri.path;
 
-      // Public routes that don't require auth
       const publicRoutes = [
         '/splash',
         '/welcome',
         '/login',
         '/register',
         '/forgot-password',
+        '/station-attendant',
       ];
 
-      // Routes that are part of registration flow
       const registrationRoutes = ['/add-vehicle', '/register'];
 
       final isPublicRoute = publicRoutes.contains(currentPath);
       final isRegistrationRoute = registrationRoutes.contains(currentPath);
 
-      // Don't redirect if on splash (it handles its own navigation)
       if (currentPath == '/splash') return null;
 
-      // Not logged in trying to access protected route
       if (!isLoggedIn && !isPublicRoute) {
         return '/welcome';
       }
 
-      // Logged in trying to access auth screens (welcome/login/register)
       if (isLoggedIn &&
           isPublicRoute &&
           currentPath != '/splash' &&
+          currentPath != '/station-attendant' &&
           !isRegistrationRoute) {
-        return '/home';
+        return user?.role.name == 'stationAttendant'
+            ? '/station-attendant'
+            : '/home';
+      }
+
+      if (isLoggedIn &&
+          user?.role.name == 'stationAttendant' &&
+          currentPath == '/home') {
+        return '/station-attendant';
       }
 
       return null;
@@ -97,21 +104,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
       ),
+      GoRoute(
+        path: '/station-attendant',
+        builder: (context, state) => const StationAttendantScreen(),
+      ),
     ],
   );
 });
 
-/// Notifies GoRouter when auth state changes so redirect re-evaluates.
 class _RouterRefreshStream extends ChangeNotifier {
-  late final ProviderSubscription<AsyncValue<User?>> _subscription;
+  late final ProviderSubscription<AsyncValue<User?>> _authSub;
+  late final ProviderSubscription<AsyncValue<dynamic>> _userSub;
 
   _RouterRefreshStream(Ref ref) {
-    _subscription = ref.listen(authStateProvider, (_, _) => notifyListeners());
+    _authSub = ref.listen(authStateProvider, (_, _) => notifyListeners());
+    _userSub = ref.listen(userProvider, (_, _) => notifyListeners());
   }
 
   @override
   void dispose() {
-    _subscription.close();
+    _authSub.close();
+    _userSub.close();
     super.dispose();
   }
 }

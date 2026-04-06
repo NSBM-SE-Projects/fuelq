@@ -133,8 +133,8 @@ class HomeScreen extends ConsumerWidget {
                           const SizedBox(width: 12),
                           _QuickAction(
                             icon: Icons.calendar_today_rounded,
-                            label: 'Book Slot',
-                            onTap: () {},
+                            label: 'Find Station',
+                            onTap: () => context.push('/map'),
                           ),
                           const SizedBox(width: 12),
                           _QuickAction(

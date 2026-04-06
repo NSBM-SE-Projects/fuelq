@@ -12,6 +12,7 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
 import '../../features/dashboard/screens/quota_dashboard_screen.dart';
+import '../../features/map/screens/map_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -99,6 +100,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
       ),
+      GoRoute(
+        path: '/map',
+        builder: (context, state) => const MapScreen(),
+      ),
     ],
   );
 });
@@ -107,8 +112,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 class _RouterRefreshStream extends ChangeNotifier {
   late final ProviderSubscription<AsyncValue<User?>> _subscription;
 
+// Changed to (_, __) again due to avoiding naming conflicts, keeping to standard.
   _RouterRefreshStream(Ref ref) {
-    _subscription = ref.listen(authStateProvider, (_, _) => notifyListeners());
+    _subscription = ref.listen(authStateProvider, (_, __) => notifyListeners());
   }
 
   @override

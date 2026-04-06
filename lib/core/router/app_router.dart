@@ -15,13 +15,11 @@ import '../../features/dashboard/screens/quota_dashboard_screen.dart';
 import '../../features/map/screens/map_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-
   return GoRouter(
     initialLocation: '/splash',
     refreshListenable: _RouterRefreshStream(ref),
     redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull != null;
+      final isLoggedIn = ref.read(authStateProvider).valueOrNull != null;
       final currentPath = state.uri.path;
 
       // Public routes that don't require auth
@@ -34,7 +32,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ];
 
       // Routes that are part of registration flow
-      const registrationRoutes = ['/add-vehicle'];
+      const registrationRoutes = ['/add-vehicle', '/register'];
 
       final isPublicRoute = publicRoutes.contains(currentPath);
       final isRegistrationRoute = registrationRoutes.contains(currentPath);
@@ -114,7 +112,7 @@ class _RouterRefreshStream extends ChangeNotifier {
 
 // Changed to (_, __) again due to avoiding naming conflicts, keeping to standard.
   _RouterRefreshStream(Ref ref) {
-    _subscription = ref.listen(authStateProvider, (_, __) => notifyListeners());
+    _subscription = ref.listen(authStateProvider, (_, _) => notifyListeners());
   }
 
   @override

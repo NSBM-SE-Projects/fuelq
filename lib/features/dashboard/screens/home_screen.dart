@@ -22,7 +22,19 @@ class HomeScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (user) {
           if (user == null) {
-            return const Center(child: Text('User not found'));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('User profile not found.'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref.read(authServiceProvider).signOut(),
+                    child: const Text('Sign Out'),
+                  ),
+                ],
+              ),
+            );
           }
 
           return Column(

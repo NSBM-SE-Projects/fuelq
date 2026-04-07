@@ -18,7 +18,7 @@ final activeBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
             .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
             .toList();
         final active = all
-            .where((b) => b.status == BookingStatus.confirmed)
+            .where((b) => b.status == BookingStatus.confirmed && b.qrCode.isNotEmpty)
             .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
         return active;

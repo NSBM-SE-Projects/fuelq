@@ -65,7 +65,7 @@ class BookingDetailScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     // QR section
-                    if (booking.status == BookingStatus.upcoming)
+                    if (booking.status == BookingStatus.upcoming || booking.status == BookingStatus.confirmed)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(24),
@@ -82,7 +82,7 @@ class BookingDetailScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 16),
                             QrImageView(
-                              data: booking.qrToken,
+                              data: booking.qrCode.isNotEmpty ? booking.qrCode : booking.qrToken,
                               version: QrVersions.auto,
                               size: 200,
                               eyeStyle: const QrEyeStyle(color: AppColors.primaryDark, eyeShape: QrEyeShape.circle),
@@ -100,7 +100,7 @@ class BookingDetailScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                    if (booking.status == BookingStatus.upcoming)
+                    if (booking.status == BookingStatus.upcoming || booking.status == BookingStatus.confirmed)
                       const SizedBox(height: 20),
 
                     // Booking info card
@@ -133,7 +133,7 @@ class BookingDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
 
                     // Cancel button for upcoming bookings
-                    if (booking.status == BookingStatus.upcoming)
+                    if (booking.status == BookingStatus.upcoming || booking.status == BookingStatus.confirmed)
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -190,7 +190,8 @@ class BookingDetailScreen extends ConsumerWidget {
 
   String _statusLabel(BookingStatus s) {
     switch (s) {
-      case BookingStatus.upcoming: return 'Upcoming';
+      case BookingStatus.upcoming:
+      case BookingStatus.confirmed: return 'Upcoming';
       case BookingStatus.completed: return 'Completed';
       case BookingStatus.cancelled: return 'Cancelled';
       case BookingStatus.expired: return 'Expired';
@@ -200,7 +201,8 @@ class BookingDetailScreen extends ConsumerWidget {
 
   Color _statusColor(BookingStatus s) {
     switch (s) {
-      case BookingStatus.upcoming: return AppColors.primary;
+      case BookingStatus.upcoming:
+      case BookingStatus.confirmed: return AppColors.primary;
       case BookingStatus.completed: return AppColors.success;
       case BookingStatus.cancelled: return AppColors.textLight;
       case BookingStatus.expired: return AppColors.warning;

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum BookingStatus { upcoming, completed, cancelled, expired, noShow }
+enum BookingStatus { upcoming, confirmed, completed, cancelled, expired, noShow }
 
 class BookingConfig {
   final int slotDurationMinutes;
@@ -51,6 +51,8 @@ class BookingModel {
   final DateTime slotStart;
   final BookingStatus status;
   final String qrToken;
+  final String qrCode;
+  final double litresBooked;
   final bool qrUsed;
   final String? scannedBy;
   final DateTime? scannedAt;
@@ -68,6 +70,8 @@ class BookingModel {
     required this.slotStart,
     required this.status,
     required this.qrToken,
+    required this.qrCode,
+    required this.litresBooked,
     this.qrUsed = false,
     this.scannedBy,
     this.scannedAt,
@@ -91,6 +95,8 @@ class BookingModel {
       slotStart: (map['slotStart'] as Timestamp).toDate(),
       status: _parseStatus(map['status'] as String?),
       qrToken: map['qrToken'] as String? ?? '',
+      qrCode: map['qrCode'] as String? ?? '',
+      litresBooked: (map['litresBooked'] as num?)?.toDouble() ?? 0.0,
       qrUsed: map['qrUsed'] as bool? ?? false,
       scannedBy: map['scannedBy'] as String?,
       scannedAt: (map['scannedAt'] as Timestamp?)?.toDate(),
@@ -108,6 +114,8 @@ class BookingModel {
     'slotStart': Timestamp.fromDate(slotStart),
     'status': status.name,
     'qrToken': qrToken,
+    'qrCode': qrCode,
+    'litresBooked': litresBooked,
     'qrUsed': qrUsed,
     'scannedBy': scannedBy,
     'scannedAt': scannedAt != null ? Timestamp.fromDate(scannedAt!) : null,
@@ -131,8 +139,10 @@ class BookingModel {
       slotStart: slotStart,
       status: status ?? this.status,
       qrToken: qrToken,
+      qrCode: qrCode,
+      litresBooked: litresBooked,
       qrUsed: qrUsed ?? this.qrUsed,
-      scannedBy: scannedBy ?? this.scannedBy,
+      scannedBy: scannedBy,
       scannedAt: scannedAt ?? this.scannedAt,
       createdAt: createdAt,
     );
@@ -141,7 +151,7 @@ class BookingModel {
   static BookingStatus _parseStatus(String? value) {
     return BookingStatus.values.firstWhere(
       (e) => e.name == value,
-      orElse: () => BookingStatus.upcoming,
+      orElse: () => BookingStatus.confirmed,
     );
   }
 

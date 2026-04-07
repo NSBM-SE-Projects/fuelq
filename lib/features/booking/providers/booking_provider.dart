@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -44,7 +45,7 @@ final slotCountsProvider = FutureProvider.family.autoDispose<Map<String, int>, (
     .where('stationId', isEqualTo: params.stationId)
     .where('slotStart', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
     .where('slotStart', isLessThan: Timestamp.fromDate(dayEnd))
-    .where('status', isEqualTo: BookingStatus.upcoming.name)
+    .where('status', isEqualTo: BookingStatus.confirmed.name)
     .get();
 
     final counts = <String, int>{};
@@ -71,8 +72,8 @@ class BookingService {
     required String vehicleNumber,
     required String fuelType,
     required DateTime slotStart,
+    required double litresBooked,
   }) async {
-    // Check if vehicle already has a booking this day
     final dayStart = DateTime(slotStart.year, slotStart.month, slotStart.day);
     final dayEnd = dayStart.add(const Duration(days: 1));
     final existing = await _firestore
@@ -80,13 +81,28 @@ class BookingService {
         .where('vehicleId', isEqualTo: vehicleId)
         .where('slotStart', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
         .where('slotStart', isLessThan: Timestamp.fromDate(dayEnd))
-        .where('status', isEqualTo: BookingStatus.upcoming.name)
+        .where('status', isEqualTo: BookingStatus.confirmed.name)
         .get();
     if (existing.docs.isNotEmpty) {
       throw Exception('This vehicle already has a booking today');
     }
 
     final docRef = _firestore.collection('bookings').doc();
+    final slotDate =
+        '${slotStart.year}-${slotStart.month.toString().padLeft(2, '0')}-${slotStart.day.toString().padLeft(2, '0')}';
+    final slotTime =
+        '${slotStart.hour.toString().padLeft(2, '0')}:${slotStart.minute.toString().padLeft(2, '0')}';
+    final qrCode = jsonEncode({
+      'bookingId': docRef.id,
+      'vehicleNumber': vehicleNumber,
+      'litres': litresBooked,
+      'fuelType': fuelType,
+      'stationId': stationId,
+      'slotDate': slotDate,
+      'slotTime': slotTime,
+      'userId': userId,
+    });
+
     final booking = BookingModel(
       id: docRef.id,
       userId: userId,
@@ -96,8 +112,10 @@ class BookingService {
       vehicleNumber: vehicleNumber,
       fuelType: fuelType,
       slotStart: slotStart,
-      status: BookingStatus.upcoming,
+      status: BookingStatus.confirmed,
       qrToken: _uuid.v4(),
+      qrCode: qrCode,
+      litresBooked: litresBooked,
       createdAt: DateTime.now(),
     );
     await docRef.set(booking.toMap());

@@ -55,6 +55,7 @@ class _StationBookingScreenState extends ConsumerState<StationBookingScreen> {
         int.parse(parts[0]), int.parse(parts[1]),
       );
 
+      final litres = _selectedVehicle!.fuelType.name == 'diesel' ? 30.0 : 16.0;
       final booking = await ref.read(bookingServiceProvider).createBooking(
         userId: user.uid,
         stationId: widget.station.id,
@@ -63,6 +64,7 @@ class _StationBookingScreenState extends ConsumerState<StationBookingScreen> {
         vehicleNumber: _selectedVehicle!.vehicleNumber,
         fuelType: _selectedVehicle!.fuelType.name,
         slotStart: slotStart,
+        litresBooked: litres,
       );
 
       if (mounted) {

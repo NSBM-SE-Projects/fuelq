@@ -66,8 +66,8 @@ class MyBookingsScreen extends ConsumerWidget {
                   );
                 }
 
-                final upcoming = bookings.where((b) => b.status == BookingStatus.upcoming).toList();
-                final past = bookings.where((b) => b.status != BookingStatus.upcoming).toList();
+                final upcoming = bookings.where((b) => b.status == BookingStatus.upcoming || b.status == BookingStatus.confirmed).toList();
+                final past = bookings.where((b) => b.status != BookingStatus.upcoming && b.status != BookingStatus.confirmed).toList();
 
                 return configAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator()),
@@ -107,7 +107,8 @@ class _BookingCard extends StatelessWidget {
 
   Color get _statusColor {
     switch (booking.status) {
-      case BookingStatus.upcoming: return AppColors.primary;
+      case BookingStatus.upcoming:
+      case BookingStatus.confirmed: return AppColors.primary;
       case BookingStatus.completed: return AppColors.success;
       case BookingStatus.cancelled: return AppColors.textLight;
       case BookingStatus.expired: return AppColors.warning;
@@ -117,7 +118,8 @@ class _BookingCard extends StatelessWidget {
 
   String get _statusText {
     switch (booking.status) {
-      case BookingStatus.upcoming: return 'Upcoming';
+      case BookingStatus.upcoming:
+      case BookingStatus.confirmed: return 'Upcoming';
       case BookingStatus.completed: return 'Completed';
       case BookingStatus.cancelled: return 'Cancelled';
       case BookingStatus.expired: return 'Expired';

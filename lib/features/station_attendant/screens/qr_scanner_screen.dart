@@ -98,19 +98,17 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
   Future<void> _processQrPayload(String raw, String attendantUid, String stationId) async {
     try {
       final qrService = ref.read(qrServiceProvider);
-      final booking = await qrService.scanAndValidate(
+      final booking = await qrService.validateOnly(
         qrPayload: raw,
-        attendantUid: attendantUid,
         attendantStationId: stationId,
       );
 
       if (!mounted) return;
 
-      // Build a local BookingModel for UI display from the validated booking
       final localBooking = BookingModel(
         id: booking.bookingId,
         vehicleNumber: booking.vehicleNumber,
-        ownerName: '',
+        ownerName: booking.userId,
         fuelType: booking.fuelType,
         litres: booking.litresBooked,
         slotTime: DateTime.now(),
@@ -118,7 +116,17 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
         isPrepaid: false,
         stationId: stationId,
       );
-      _showConfirmationSheet(localBooking);
+
+      _showConfirmationSheet(
+        localBooking,
+        onConfirmed: () async {
+          await qrService.scanAndValidate(
+            qrPayload: raw,
+            attendantUid: attendantUid,
+            attendantStationId: stationId,
+          );
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       _showError(e.toString().replaceFirst('Exception: ', ''));
@@ -265,7 +273,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
     );
   }
 
-  void _showConfirmationSheet(BookingModel booking) {
+  void _showConfirmationSheet(BookingModel booking, {Future<void> Function()? onConfirmed}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -274,13 +282,18 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
       ),
       builder: (sheetCtx) => _ConfirmationSheet(
         booking: booking,
-        onConfirm: () {
+        onConfirm: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final nav = Navigator.of(context);
+          final sheetNav = Navigator.of(sheetCtx);
+          await onConfirmed?.call();
           _addHistory(booking, success: true);
           HapticFeedback.heavyImpact();
           SystemSound.play(SystemSoundType.click);
-          Navigator.pop(sheetCtx);
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
+          if (!mounted) return;
+          sheetNav.pop();
+          nav.pop();
+          messenger.showSnackBar(
             SnackBar(
               content: Text(
                   '${booking.vehicleNumber} — ${booking.litres.toStringAsFixed(0)}L dispensed'),
@@ -543,7 +556,7 @@ class _ConfirmationSheet extends StatelessWidget {
   });
 
   final BookingModel booking;
-  final VoidCallback onConfirm;
+  final Future<void> Function() onConfirm;
   final VoidCallback onCancel;
 
   @override

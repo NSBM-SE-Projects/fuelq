@@ -98,6 +98,38 @@ class QrService {
     return booking;
   }
 
+  // Validates the QR without marking complete — use before showing confirmation
+  Future<BookingModel> validateOnly({
+    required String qrPayload,
+    required String attendantStationId,
+  }) async {
+    final data = BookingModel.parseQrPayload(qrPayload);
+    if (data == null) throw Exception('Invalid QR code format');
+
+    final bookingId = data['bookingId'] as String;
+    final doc = await _firestore.collection('bookings').doc(bookingId).get();
+    if (!doc.exists) throw Exception('Booking not found');
+
+    final booking = BookingModel.fromMap(doc.id, doc.data()!);
+
+    if (booking.qrUsed) throw Exception('This QR code has already been used');
+    if (booking.status != BookingStatus.confirmed) {
+      throw Exception('Booking is ${booking.status.name}');
+    }
+    if (booking.stationId != attendantStationId) {
+      throw Exception('This booking is for a different station');
+    }
+
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    if (booking.slotDate != todayStr) {
+      throw Exception('This booking is for ${booking.slotDate}, not today');
+    }
+
+    return booking;
+  }
+
   Future<BookingModel> scanAndValidate({
     required String qrPayload,
     required String attendantUid,

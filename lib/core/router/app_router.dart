@@ -12,6 +12,7 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
 import '../../features/dashboard/screens/quota_dashboard_screen.dart';
+import '../../features/qr/screens/qr_display_screen.dart';
 import '../../features/station_attendant/screens/station_attendant_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -103,6 +104,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/qr-display',
+        builder: (context, state) => const QrDisplayScreen(),
       ),
       GoRoute(
         path: '/station-attendant',

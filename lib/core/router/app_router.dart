@@ -13,6 +13,13 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
 import '../../features/dashboard/screens/quota_dashboard_screen.dart';
 import '../../features/map/screens/map_screen.dart';
+import '../../features/map/models/station_model.dart';
+import '../../features/booking/screens/station_booking_screen.dart';
+import '../../features/booking/screens/booking_confirmation_screen.dart';
+import '../../features/booking/screens/booking_detail_screen.dart';
+import '../../features/booking/screens/my_bookings_screen.dart';
+import '../../features/booking/models/booking_model.dart';
+import '../constants/app_colors.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -22,63 +29,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = ref.read(authStateProvider).valueOrNull != null;
       final currentPath = state.uri.path;
 
-      // Public routes that don't require auth
-      const publicRoutes = [
-        '/splash',
-        '/welcome',
-        '/login',
-        '/register',
-        '/forgot-password',
-      ];
-
-      // Routes that are part of registration flow
+      const publicRoutes = ['/splash', '/welcome', '/login', '/register', '/forgot-password'];
       const registrationRoutes = ['/add-vehicle', '/register'];
 
       final isPublicRoute = publicRoutes.contains(currentPath);
       final isRegistrationRoute = registrationRoutes.contains(currentPath);
 
-      // Don't redirect if on splash (it handles its own navigation)
       if (currentPath == '/splash') return null;
-
-      // Not logged in trying to access protected route
-      if (!isLoggedIn && !isPublicRoute) {
-        return '/welcome';
-      }
-
-      // Logged in trying to access auth screens (welcome/login/register)
-      if (isLoggedIn &&
-          isPublicRoute &&
-          currentPath != '/splash' &&
-          !isRegistrationRoute) {
-        return '/home';
-      }
+      if (!isLoggedIn && !isPublicRoute) return '/welcome';
+      if (isLoggedIn && isPublicRoute && currentPath != '/splash' && !isRegistrationRoute) return '/home';
 
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (context, state) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: '/welcome',
-        builder: (context, state) => const WelcomeScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (context, state) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: '/forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
-      ),
+      GoRoute(path: '/splash', builder: (_, state) => const SplashScreen()),
+      GoRoute(path: '/welcome', builder: (_, state) => const WelcomeScreen()),
+      GoRoute(path: '/login', builder: (_, state) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, state) => const RegisterScreen()),
+      GoRoute(path: '/forgot-password', builder: (_, state) => const ForgotPasswordScreen()),
       GoRoute(
         path: '/add-vehicle',
-        builder: (context, state) {
+        builder: (_, state) {
           final data = state.extra as Map<String, dynamic>;
           return VehicleRegistrationScreen(
             uid: data['uid'] as String,
@@ -86,31 +57,102 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+
+      // Main app with bottom nav
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return _MainShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/home', builder: (_, state) => const HomeScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/map', builder: (_, state) => const MapScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/my-bookings', builder: (_, state) => const MyBookingsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/profile', builder: (_, state) => const ProfileScreen()),
+          ]),
+        ],
+      ),
+
+      // Screens that push on top of the nav bar
+      GoRoute(path: '/quota', builder: (_, state) => const QuotaDashboardScreen()),
       GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        path: '/book-station',
+        builder: (_, state) {
+          final station = state.extra as StationModel;
+          return StationBookingScreen(station: station);
+        },
       ),
       GoRoute(
-        path: '/quota',
-        builder: (context, state) => const QuotaDashboardScreen(),
+        path: '/booking-confirmed',
+        builder: (_, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return BookingConfirmationScreen(
+            booking: data['booking'] as BookingModel,
+            slotDuration: data['slotDuration'] as Duration,
+          );
+        },
       ),
       GoRoute(
-        path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
-      ),
-      GoRoute(
-        path: '/map',
-        builder: (context, state) => const MapScreen(),
+        path: '/booking-detail',
+        builder: (_, state) {
+          final booking = state.extra as BookingModel;
+          return BookingDetailScreen(booking: booking);
+        },
       ),
     ],
   );
 });
 
-/// Notifies GoRouter when auth state changes so redirect re-evaluates.
+class _MainShell extends StatelessWidget {
+  final StatefulNavigationShell navigationShell;
+
+  const _MainShell({required this.navigationShell});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: (index) => navigationShell.goBranch(index, initialLocation: index == navigationShell.currentIndex),
+        backgroundColor: Colors.white,
+        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: AppColors.primary),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map_rounded, color: AppColors.primary),
+            label: 'Map',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+            label: 'Bookings',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: AppColors.primary),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RouterRefreshStream extends ChangeNotifier {
   late final ProviderSubscription<AsyncValue<User?>> _subscription;
 
-// Changed to (_, __) again due to avoiding naming conflicts, keeping to standard.
   _RouterRefreshStream(Ref ref) {
     _subscription = ref.listen(authStateProvider, (_, _) => notifyListeners());
   }

@@ -89,6 +89,39 @@ class _VehicleRegistrationScreenState
     }
   }
 
+  Future<void> _saveAndGoBack() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final vehicle = VehicleModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        vehicleNumber: _vehicleNumberController.text.trim().toUpperCase(),
+        chassisNumber: _chassisNumberController.text.trim().toUpperCase(),
+        fuelType: _selectedFuelType,
+        nickname: _nicknameController.text.trim(),
+        createdAt: DateTime.now(),
+      );
+
+      await ref.read(authServiceProvider).addVehicle(uid: widget.uid, vehicle: vehicle);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vehicle added successfully!'), backgroundColor: AppColors.success),
+        );
+        context.pop();
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _finish() {
     context.go('/home');
   }
@@ -293,58 +326,61 @@ class _VehicleRegistrationScreenState
                           ],
                         ),
                         const SizedBox(height: 32),
-                        OutlinedButton(
-                          onPressed: _isLoading ? null : _addVehicle,
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.add_rounded),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _addedVehicles.isEmpty
-                                          ? 'Add Vehicle'
-                                          : 'Add Another Vehicle',
-                                    ),
-                                  ],
-                                ),
-                        ),
-                        if (widget.isFirstTime &&
-                            _addedVehicles.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _finish,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('Continue to Dashboard'),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded, size: 20),
-                              ],
-                            ),
-                          ),
-                        ],
-                        if (!widget.isFirstTime) ...[
-                          const SizedBox(height: 16),
-                          ElevatedButton(
+                        if (widget.isFirstTime) ...[
+                          OutlinedButton(
                             onPressed: _isLoading ? null : _addVehicle,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('Save Vehicle'),
-                                SizedBox(width: 8),
-                                Icon(Icons.check_rounded, size: 20),
-                              ],
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.add_rounded),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _addedVehicles.isEmpty
+                                            ? 'Add Vehicle'
+                                            : 'Add Another Vehicle',
+                                      ),
+                                    ],
+                                  ),
                           ),
+                          if (_addedVehicles.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _finish,
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('Continue to Dashboard'),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.arrow_forward_rounded, size: 20),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
+                        if (!widget.isFirstTime)
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _saveAndGoBack,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text('Save Vehicle'),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.check_rounded, size: 20),
+                                    ],
+                                  ),
+                          ),
                         const SizedBox(height: 32),
                       ],
                     ),

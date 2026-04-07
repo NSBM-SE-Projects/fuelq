@@ -1,9 +1,11 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../auth/models/vehicle_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../models/quota_model.dart';
+import '../providers/quota_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -11,7 +13,8 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(userProvider);
-    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final quotas = ref.watch(quotasProvider);
+    final summary = ref.watch(quotaSummaryProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -39,7 +42,7 @@ class HomeScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // Blue header
+              // Header with greeting + quota ring
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.only(
@@ -108,12 +111,9 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
@@ -127,113 +127,77 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    // Quota ring
+                    Center(
+                      child: _QuotaRing(
+                        usagePercent: summary.usagePercent,
+                        remaining: summary.totalRemaining,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Summary stats
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _HeaderStat(label: 'Weekly Limit', value: '${summary.totalLimit.toStringAsFixed(0)}L'),
+                        Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.2)),
+                        _HeaderStat(label: 'Used', value: '${summary.totalUsed.toStringAsFixed(1)}L'),
+                        Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.2)),
+                        _HeaderStat(label: 'Vehicles', value: '${summary.vehicleCount}'),
+                      ],
+                    ),
                   ],
                 ),
               ),
+
+              // Vehicle quota cards
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          _QuickAction(
-                            icon: Icons.water_drop_rounded,
-                            label: 'My Quota',
-                            onTap: () => context.push('/quota'),
-                          ),
-                          const SizedBox(width: 12),
-                          _QuickAction(
-                            icon: Icons.calendar_today_rounded,
-                            label: 'Find Station',
-                            onTap: () => context.push('/map'),
-                          ),
-                          const SizedBox(width: 12),
-                          _QuickAction(
-                            icon: Icons.qr_code_rounded,
-                            label: 'My QR',
-                            onTap: () {},
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'My Vehicles',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => context.push(
-                              '/add-vehicle',
-                              extra: {'uid': user.uid, 'isFirstTime': false},
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
+                child: quotas.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 64, height: 64,
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.08,
-                                ),
-                                borderRadius: BorderRadius.circular(20),
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
                               ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.add_rounded,
-                                    size: 16,
-                                    color: AppColors.primary,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Add Vehicle',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              child: const Icon(Icons.local_gas_station_outlined, size: 32, color: AppColors.primaryLight),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      vehiclesAsync.when(
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
+                            const SizedBox(height: 16),
+                            const Text('No quota data yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            const SizedBox(height: 6),
+                            const Text('Register a vehicle to view your fuel quota', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                            const SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: () => context.push('/add-vehicle', extra: {'uid': user.uid, 'isFirstTime': false}),
+                              child: const Text('Register a Vehicle'),
+                            ),
+                          ],
                         ),
-                        error: (e, _) => Text('Error: $e'),
-                        data: (vehicles) {
-                          if (vehicles.isEmpty) {
-                            return _EmptyVehiclesCard(
-                              onAdd: () => context.push(
-                                '/add-vehicle',
-                                extra: {'uid': user.uid, 'isFirstTime': false},
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (quotas.isNotEmpty)
+                              _WeekInfoCard(
+                                weekStart: quotas.first.weekStart,
+                                weekEnd: quotas.first.weekEnd,
                               ),
-                            );
-                          }
-                          return Column(
-                            children: vehicles
-                                .map((v) => _VehicleListItem(vehicle: v))
-                                .toList(),
-                          );
-                        },
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Vehicle Quotas',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 14),
+                            ...quotas.map((q) => _VehicleQuotaCard(quota: q)),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ],
           );
@@ -251,60 +215,55 @@ class HomeScreen extends ConsumerWidget {
 
   String _roleLabel(String role) {
     switch (role) {
-      case 'vehicleOwner':
-        return 'Vehicle Owner';
-      case 'stationAttendant':
-        return 'Station Attendant';
-      case 'governmentAdmin':
-        return 'Government Admin';
-      default:
-        return role;
+      case 'vehicleOwner': return 'Vehicle Owner';
+      case 'stationAttendant': return 'Station Attendant';
+      case 'governmentAdmin': return 'Government Admin';
+      default: return role;
     }
   }
 }
 
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
+class _HeaderStat extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final String value;
 
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _HeaderStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider),
-          ),
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.6))),
+      ],
+    );
+  }
+}
+
+class _QuotaRing extends StatelessWidget {
+  final double usagePercent;
+  final double remaining;
+
+  const _QuotaRing({required this.usagePercent, required this.remaining});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 140, height: 140,
+      child: CustomPaint(
+        painter: _RingPainter(usagePercent: usagePercent),
+        child: Center(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(height: 10),
               Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+                '${remaining.toStringAsFixed(0)}L',
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+              ),
+              Text(
+                'remaining',
+                style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6)),
               ),
             ],
           ),
@@ -314,199 +273,104 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-class _VehicleListItem extends StatelessWidget {
-  final VehicleModel vehicle;
+class _RingPainter extends CustomPainter {
+  final double usagePercent;
 
-  const _VehicleListItem({required this.vehicle});
+  _RingPainter({required this.usagePercent});
 
-  void _showVehicleDetails(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryLight],
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(
-                Icons.directions_car_rounded,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              vehicle.nickname.isNotEmpty
-                  ? vehicle.nickname
-                  : vehicle.vehicleNumber,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            _DetailRow(
-              icon: Icons.confirmation_number_outlined,
-              label: 'Vehicle Number',
-              value: vehicle.vehicleNumber,
-            ),
-            _DetailRow(
-              icon: Icons.pin_outlined,
-              label: 'Chassis Number',
-              value: vehicle.chassisNumber,
-            ),
-            _DetailRow(
-              icon: Icons.local_gas_station_outlined,
-              label: 'Fuel Type',
-              value: vehicle.fuelType.name[0].toUpperCase() +
-                  vehicle.fuelType.name.substring(1),
-            ),
-            if (vehicle.nickname.isNotEmpty)
-              _DetailRow(
-                icon: Icons.label_outlined,
-                label: 'Nickname',
-                value: vehicle.nickname,
-              ),
-          ],
-        ),
-      ),
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 8;
+    const strokeWidth = 20.0;
+
+    final bgPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    final progressPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    if (usagePercent >= 0.9) {
+      progressPaint.color = AppColors.error;
+    } else if (usagePercent >= 0.7) {
+      progressPaint.color = AppColors.warning;
+    } else {
+      progressPaint.color = AppColors.success;
+    }
+
+    final sweepAngle = 2 * pi * (1 - usagePercent);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      sweepAngle,
+      false,
+      progressPaint,
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showVehicleDetails(context),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryLight],
-                ),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.directions_car_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vehicle.nickname.isNotEmpty
-                        ? vehicle.nickname
-                        : vehicle.vehicleNumber,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${vehicle.vehicleNumber} \u00B7 ${vehicle.fuelType.name[0].toUpperCase()}${vehicle.fuelType.name.substring(1)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
-          ],
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant _RingPainter oldDelegate) =>
+      oldDelegate.usagePercent != usagePercent;
 }
 
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
+class _WeekInfoCard extends StatelessWidget {
+  final DateTime weekStart;
+  final DateTime weekEnd;
 
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _WeekInfoCard({required this.weekStart, required this.weekEnd});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final startStr = '${weekStart.day} ${months[weekStart.month - 1]}';
+    final endStr = '${weekEnd.day} ${months[weekEnd.month - 1]}';
+    final daysLeft = weekEnd.difference(DateTime.now()).inDays.clamp(0, 7);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.15)),
+      ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 44, height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 18, color: AppColors.primary),
+            child: const Icon(Icons.calendar_today_rounded, size: 20, color: AppColors.accent),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textLight,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                Text('$startStr - $endStr', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                const Text('Current quota week', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: daysLeft <= 1 ? AppColors.warning.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$daysLeft days left',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: daysLeft <= 1 ? AppColors.warning : AppColors.success),
             ),
           ),
         ],
@@ -515,16 +379,32 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _EmptyVehiclesCard extends StatelessWidget {
-  final VoidCallback onAdd;
+class _VehicleQuotaCard extends StatelessWidget {
+  final QuotaModel quota;
 
-  const _EmptyVehiclesCard({required this.onAdd});
+  const _VehicleQuotaCard({required this.quota});
 
   @override
   Widget build(BuildContext context) {
+    final displayName = quota.nickname.isNotEmpty ? quota.nickname : quota.vehicleNumber;
+    final fuelLabel = quota.fuelType[0].toUpperCase() + quota.fuelType.substring(1);
+
+    Color statusColor;
+    String statusLabel;
+    if (quota.isExhausted) {
+      statusColor = AppColors.error;
+      statusLabel = 'Exhausted';
+    } else if (quota.usagePercent >= 0.7) {
+      statusColor = AppColors.warning;
+      statusLabel = 'Low';
+    } else {
+      statusColor = AppColors.success;
+      statusLabel = 'Available';
+    }
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -532,40 +412,85 @@ class _EmptyVehiclesCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.directions_car_outlined,
-              size: 32,
-              color: AppColors.primaryLight,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.directions_car_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(displayName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
+                    const SizedBox(height: 3),
+                    Text('${quota.vehicleNumber} \u00B7 $fuelLabel', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(statusLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor)),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No vehicles registered',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: quota.usagePercent,
+              minHeight: 8,
+              backgroundColor: AppColors.divider,
+              valueColor: AlwaysStoppedAnimation<Color>(statusColor),
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Add a vehicle to start booking fuel',
-            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: onAdd,
-            child: const Text('Register a Vehicle'),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _QuotaStat(icon: Icons.local_gas_station_rounded, label: 'Used', value: '${quota.used.toStringAsFixed(1)}L', color: AppColors.textSecondary),
+              _QuotaStat(icon: Icons.water_drop_outlined, label: 'Remaining', value: '${quota.remaining.toStringAsFixed(1)}L', color: statusColor),
+              _QuotaStat(icon: Icons.speed_rounded, label: 'Limit', value: '${quota.weeklyLimit.toStringAsFixed(0)}L', color: AppColors.textSecondary),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _QuotaStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _QuotaStat({required this.icon, required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
+          ],
+        ),
+      ],
     );
   }
 }

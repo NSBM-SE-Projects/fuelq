@@ -19,6 +19,7 @@ import '../../features/booking/screens/booking_confirmation_screen.dart';
 import '../../features/booking/screens/booking_detail_screen.dart';
 import '../../features/booking/screens/my_bookings_screen.dart';
 import '../../features/booking/models/booking_model.dart';
+import '../../features/payment/screens/payment_screen.dart';
 import '../constants/app_colors.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -86,6 +87,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) {
           final station = state.extra as StationModel;
           return StationBookingScreen(station: station);
+        },
+      ),
+      GoRoute(
+        path: '/payment',
+        builder: (_, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return PaymentScreen(
+            stationId: data['stationId'] as String,
+            stationName: data['stationName'] as String,
+            vehicleId: data['vehicleId'] as String,
+            vehicleNumber: data['vehicleNumber'] as String,
+            fuelType: data['fuelType'] as String,
+            slotStart: data['slotStart'] as DateTime,
+          );
         },
       ),
       GoRoute(

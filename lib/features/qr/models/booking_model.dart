@@ -63,24 +63,24 @@ class BookingModel {
   factory BookingModel.fromMap(String id, Map<String, dynamic> map) {
     return BookingModel(
       bookingId: id,
-      userId: map['userId'] as String,
-      vehicleNumber: map['vehicleNumber'] as String,
+      userId: map['userId'] as String? ?? '',
+      vehicleNumber: map['vehicleNumber'] as String? ?? '',
       vehicleId: map['vehicleId'] as String? ?? '',
-      stationId: map['stationId'] as String,
-      stationName: map['stationName'] as String,
-      fuelType: map['fuelType'] as String,
-      litresBooked: (map['litresBooked'] as num).toDouble(),
-      slotDate: map['slotDate'] as String,
-      slotTime: map['slotTime'] as String,
-      qrCode: map['qrCode'] as String,
+      stationId: map['stationId'] as String? ?? '',
+      stationName: map['stationName'] as String? ?? '',
+      fuelType: map['fuelType'] as String? ?? '',
+      litresBooked: (map['litresBooked'] as num?)?.toDouble() ?? 0.0,
+      slotDate: map['slotDate'] as String? ?? '',
+      slotTime: map['slotTime'] as String? ?? '',
+      qrCode: map['qrCode'] as String? ?? map['qrToken'] as String? ?? '',
       qrUsed: map['qrUsed'] as bool? ?? false,
       scannedBy: map['scannedBy'] as String?,
       scannedAt: (map['scannedAt'] as Timestamp?)?.toDate(),
       status: BookingStatus.values.firstWhere(
-        (e) => e.name == map['status'],
+        (e) => e.name == (map['status'] as String? ?? ''),
         orElse: () => BookingStatus.confirmed,
       ),
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

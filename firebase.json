@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"fuelq-group12","appId":"1:225350633374:android:d338ba5f4cca07c4a3788f","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"fuelq-group12","configurations":{"android":"1:225350633374:android:d338ba5f4cca07c4a3788f","ios":"1:225350633374:ios:54e68777a4855c00a3788f"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "fuelq-group12",
+          "appId": "1:225350633374:android:d338ba5f4cca07c4a3788f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "fuelq-group12",
+          "configurations": {
+            "android": "1:225350633374:android:d338ba5f4cca07c4a3788f",
+            "ios": "1:225350633374:ios:54e68777a4855c00a3788f"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  }
+}

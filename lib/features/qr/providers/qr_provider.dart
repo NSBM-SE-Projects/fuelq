@@ -12,14 +12,17 @@ final activeBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
       .watch(firestoreProvider)
       .collection('bookings')
       .where('userId', isEqualTo: user.uid)
-      .where('status', isEqualTo: 'confirmed')
-      .orderBy('createdAt', descending: true)
       .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
+      .map((snapshot) {
+        final all = snapshot.docs
             .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
-            .toList(),
-      );
+            .toList();
+        final active = all
+            .where((b) => b.status == BookingStatus.confirmed)
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return active;
+      });
 });
 
 final pastBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
@@ -31,15 +34,20 @@ final pastBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
       .watch(firestoreProvider)
       .collection('bookings')
       .where('userId', isEqualTo: user.uid)
-      .where('status', whereIn: ['completed', 'expired', 'cancelled'])
-      .orderBy('createdAt', descending: true)
-      .limit(20)
       .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
+      .map((snapshot) {
+        final all = snapshot.docs
             .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
-            .toList(),
-      );
+            .toList();
+        final past = all
+            .where((b) =>
+                b.status == BookingStatus.completed ||
+                b.status == BookingStatus.expired ||
+                b.status == BookingStatus.cancelled)
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return past.take(20).toList();
+      });
 });
 
 class QrService {

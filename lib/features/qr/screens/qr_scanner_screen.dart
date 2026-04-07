@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/booking_model.dart';
-
+import '../providers/qr_provider.dart';
 
 class QrScannerScreen extends ConsumerStatefulWidget {
   const QrScannerScreen({super.key});
@@ -155,13 +156,48 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
   }
 
   Future<void> _confirmScan(String rawPayload) async {
-    // TODO: Get attendant's station ID from their profile
-    // For now, show success with booking details
-    _showResult(
-      success: true,
-      title: 'QR Verified',
-      message: 'Fuel dispensing confirmed. The booking has been marked as completed.',
-    );
+    final user = ref.read(userProvider).valueOrNull;
+    if (user == null) {
+      _showResult(
+        success: false,
+        title: 'Error',
+        message: 'You must be logged in to scan QR codes.',
+      );
+      return;
+    }
+
+    final stationId = user.stationId;
+    if (stationId == null || stationId.isEmpty) {
+      _showResult(
+        success: false,
+        title: 'No Station Assigned',
+        message: 'Your account is not linked to a fuel station. Contact your administrator.',
+      );
+      return;
+    }
+
+    try {
+      final qrService = ref.read(qrServiceProvider);
+      await qrService.scanAndValidate(
+        qrPayload: rawPayload,
+        attendantUid: user.uid,
+        attendantStationId: stationId,
+      );
+
+      if (!mounted) return;
+      _showResult(
+        success: true,
+        title: 'QR Verified',
+        message: 'Fuel dispensing confirmed. The booking has been marked as completed.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showResult(
+        success: false,
+        title: 'Verification Failed',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
   }
 
   void _showResult({

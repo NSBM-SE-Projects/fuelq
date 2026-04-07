@@ -63,8 +63,8 @@ class BookingModel {
   final String? scannedBy;
   final DateTime? scannedAt;
   final DateTime createdAt;
-  final String paymentMethod; // 'card' or 'cash'
-  final String paymentStatus; // 'pending' or 'paid'
+  final String paymentMethod;
+  final String paymentStatus; 
   final double amount;
   final String? cardLast4;
 

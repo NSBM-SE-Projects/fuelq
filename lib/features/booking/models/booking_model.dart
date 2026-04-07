@@ -8,6 +8,8 @@ class BookingConfig {
   final int cancelWindowMinutes;
   final int arrivalWindowMinutes;
   final int maxBookingsPerVehiclePerDay;
+  final double petrolPricePerLiter;
+  final double dieselPricePerLiter;
 
   const BookingConfig({
     required this.slotDurationMinutes,
@@ -15,6 +17,8 @@ class BookingConfig {
     required this.cancelWindowMinutes,
     required this.arrivalWindowMinutes,
     required this.maxBookingsPerVehiclePerDay,
+    required this.petrolPricePerLiter,
+    required this.dieselPricePerLiter,
   });
 
   Duration get slotDuration => Duration(minutes: slotDurationMinutes);
@@ -28,6 +32,8 @@ class BookingConfig {
       cancelWindowMinutes: (map['cancelWindowMinutes'] as num?)?.toInt() ?? 30,
       arrivalWindowMinutes: (map['arrivalWindowMinutes'] as num?)?.toInt() ?? 15,
       maxBookingsPerVehiclePerDay: (map['maxBookingsPerVehiclePerDay'] as num?)?.toInt() ?? 1,
+      petrolPricePerLiter: (map['petrolPricePerLiter'] as num?)?.toDouble() ?? 366.0,
+      dieselPricePerLiter: (map['dieselPricePerLiter'] as num?)?.toDouble() ?? 336.0,
     );
   }
 
@@ -37,6 +43,8 @@ class BookingConfig {
     'cancelWindowMinutes': cancelWindowMinutes,
     'arrivalWindowMinutes': arrivalWindowMinutes,
     'maxBookingsPerVehiclePerDay': maxBookingsPerVehiclePerDay,
+    'petrolPricePerLiter': petrolPricePerLiter,
+    'dieselPricePerLiter': dieselPricePerLiter,
   };
 }
 
@@ -57,8 +65,11 @@ class BookingModel {
   final String? scannedBy;
   final DateTime? scannedAt;
   final DateTime createdAt;
+  final String paymentMethod;
+  final String paymentStatus; 
+  final double amount;
+  final String? cardLast4;
 
-  //a
   const BookingModel({
     required this.id,
     required this.userId,
@@ -76,6 +87,10 @@ class BookingModel {
     this.scannedBy,
     this.scannedAt,
     required this.createdAt,
+    required this.paymentMethod,
+    required this.paymentStatus,
+    required this.amount,
+    this.cardLast4,
   });
 
   DateTime slotEnd(Duration slotDuration) => slotStart.add(slotDuration);
@@ -101,6 +116,10 @@ class BookingModel {
       scannedBy: map['scannedBy'] as String?,
       scannedAt: (map['scannedAt'] as Timestamp?)?.toDate(),
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      paymentMethod: map['paymentMethod'] as String? ?? 'cash',
+      paymentStatus: map['paymentStatus'] as String? ?? 'pending',
+      amount: (map['amount'] as num?)?.toDouble() ?? 0,
+      cardLast4: map['cardLast4'] as String?,
     );
   }
 
@@ -120,13 +139,18 @@ class BookingModel {
     'scannedBy': scannedBy,
     'scannedAt': scannedAt != null ? Timestamp.fromDate(scannedAt!) : null,
     'createdAt': Timestamp.fromDate(createdAt),
+    'paymentMethod': paymentMethod,
+    'paymentStatus': paymentStatus,
+    'amount': amount,
+    'cardLast4': cardLast4,
   };
 
   BookingModel copyWith({
     BookingStatus? status,
     bool? qrUsed,
-    String? scannedby,
+    String? scannedBy,
     DateTime? scannedAt,
+    String? paymentStatus,
   }) {
     return BookingModel(
       id: id,
@@ -145,6 +169,10 @@ class BookingModel {
       scannedBy: scannedBy,
       scannedAt: scannedAt ?? this.scannedAt,
       createdAt: createdAt,
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      amount: amount,
+      cardLast4: cardLast4,
     );
   }
 

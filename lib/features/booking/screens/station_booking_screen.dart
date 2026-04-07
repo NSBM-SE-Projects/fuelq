@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../auth/models/vehicle_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../map/models/station_model.dart';
 import '../providers/booking_provider.dart';
 
@@ -19,7 +19,6 @@ class _StationBookingScreenState extends ConsumerState<StationBookingScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _selectedSlot;
   VehicleModel? _selectedVehicle;
-  bool _isBooking = false;
 
   List<DateTime> get _dates =>
       List.generate(7, (i) => DateTime.now().add(Duration(days: i)));
@@ -43,60 +42,25 @@ class _StationBookingScreenState extends ConsumerState<StationBookingScreen> {
     return int.parse(parts[0]) * 60 + int.parse(parts[1]);
   }
 
-  Future<void> _book() async {
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null || _selectedVehicle == null || _selectedSlot == null) return;
+  void _goToPayment() {
+    if (_selectedVehicle == null || _selectedSlot == null) return;
 
-    setState(() => _isBooking = true);
-    try {
-      final parts = _selectedSlot!.split(':');
-      final slotStart = DateTime(
-        _selectedDate.year, _selectedDate.month, _selectedDate.day,
-        int.parse(parts[0]), int.parse(parts[1]),
-      );
+    final parts = _selectedSlot!.split(':');
+    final slotStart = DateTime(
+      _selectedDate.year, _selectedDate.month, _selectedDate.day,
+      int.parse(parts[0]), int.parse(parts[1]),
+    );
 
-      final litres = _selectedVehicle!.fuelType.name == 'diesel' ? 30.0 : 16.0;
-      final booking = await ref.read(bookingServiceProvider).createBooking(
-        userId: user.uid,
-        stationId: widget.station.id,
-        stationName: widget.station.name,
-        vehicleId: _selectedVehicle!.id,
-        vehicleNumber: _selectedVehicle!.vehicleNumber,
-        fuelType: _selectedVehicle!.fuelType.name,
-        slotStart: slotStart,
-        litresBooked: litres,
-      );
-
-      if (mounted) {
-        final cfg = ref.read(bookingConfigProvider).valueOrNull;
-        context.go('/booking-confirmed', extra: {
-          'booking': booking,
-          'slotDuration': cfg?.slotDuration ?? const Duration(minutes: 30),
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        final isVehicleBooked = e.toString().contains('already has a booking');
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(isVehicleBooked ? 'Vehicle Already Booked' : 'Booking Failed'),
-            content: Text(isVehicleBooked
-                ? 'This vehicle already has a fuel slot booked for today. Each vehicle is limited to one booking per day.'
-                : 'Something went wrong while creating your booking. Please try again later.'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isBooking = false);
-    }
+    final litres = _selectedVehicle!.fuelType.name == 'diesel' ? 30.0 : 16.0;
+    context.push('/payment', extra: {
+      'stationId': widget.station.id,
+      'stationName': widget.station.name,
+      'vehicleId': _selectedVehicle!.id,
+      'vehicleNumber': _selectedVehicle!.vehicleNumber,
+      'fuelType': _selectedVehicle!.fuelType.name,
+      'slotStart': slotStart,
+      'litresBooked': litres,
+    });
   }
 
   @override
@@ -365,14 +329,9 @@ class _StationBookingScreenState extends ConsumerState<StationBookingScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: (_selectedSlot != null && _selectedVehicle != null && !_isBooking)
-                        ? _book : null,
-                    child: _isBooking
-                        ? const SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Confirm Booking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    onPressed: (_selectedSlot != null && _selectedVehicle != null)
+                        ? _goToPayment : null,
+                    child: const Text('Continue to Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ),

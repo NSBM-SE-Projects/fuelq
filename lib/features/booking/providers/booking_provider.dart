@@ -14,6 +14,8 @@ final bookingConfigProvider = FutureProvider<BookingConfig>((ref) async {
       cancelWindowMinutes: 30,
       arrivalWindowMinutes: 15,
       maxBookingsPerVehiclePerDay: 1,
+      petrolPricePerLiter: 366.0,
+      dieselPricePerLiter: 336.0,
     );
   }
   return BookingConfig.fromMap(doc.data()!);
@@ -73,6 +75,10 @@ class BookingService {
     required String fuelType,
     required DateTime slotStart,
     required double litresBooked,
+    required String paymentMethod,
+    required String paymentStatus,
+    required double amount,
+    String? cardLast4,
   }) async {
     final dayStart = DateTime(slotStart.year, slotStart.month, slotStart.day);
     final dayEnd = dayStart.add(const Duration(days: 1));
@@ -117,6 +123,10 @@ class BookingService {
       qrCode: qrCode,
       litresBooked: litresBooked,
       createdAt: DateTime.now(),
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentStatus,
+      amount: amount,
+      cardLast4: cardLast4,
     );
     await docRef.set(booking.toMap());
     return booking;

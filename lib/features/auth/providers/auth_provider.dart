@@ -78,13 +78,26 @@ class AuthService {
     required String uid,
     required VehicleModel vehicle,
   }) async {
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekEnd = now.add(Duration(days: 7 - now.weekday));
+    final weeklyLimit = vehicle.fuelType == FuelType.diesel ? 32.0: 16.0;
+
+    final data = {
+      ...vehicle.toMap(),
+      'used': 0.0,
+      'weeklyLimit': weeklyLimit,
+      'weekStart': Timestamp.fromDate(weekStart),
+      'weekEnd': Timestamp.fromDate(weekEnd),
+      };
+
     await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('vehicles')
-        .doc(vehicle.id)
-        .set(vehicle.toMap());
-  }
+      .collection('users')
+      .doc(uid)
+      .collection('vehicles')
+      .doc(vehicle.id)
+      .set(data);
+    }
 
   Future<void> deleteVehicle({
     required String uid,

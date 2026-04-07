@@ -13,6 +13,7 @@ class UserModel {
   final String phone;
   final String nic;
   final UserRole role;
+  final String? stationId; // Only for station attendants
   final DateTime createdAt;
 
   UserModel({
@@ -22,6 +23,7 @@ class UserModel {
     required this.phone,
     required this.nic,
     required this.role,
+    this.stationId,
     required this.createdAt,
   });
 
@@ -33,6 +35,7 @@ class UserModel {
       'phone': phone,
       'nic': nic,
       'role': role.name,
+      if (stationId != null) 'stationId': stationId,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -48,6 +51,7 @@ class UserModel {
         (e) => e.name == map['role'],
         orElse: () => UserRole.vehicleOwner,
       ),
+      stationId: map['stationId'] as String?,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
     );
   }

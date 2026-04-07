@@ -1,12 +1,12 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../qr/providers/qr_provider.dart';
 import '../models/booking_model.dart';
-import '../providers/station_attendant_provider.dart';
 
 class _ScanRecord {
   final String vehicleNumber;
@@ -82,40 +82,47 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
   }
 
   void _handleQrCode(String raw) {
-    try {
-      final data = json.decode(raw) as Map<String, dynamic>;
-      final bookingId = data['bookingId'] as String?;
-      if (bookingId == null) {
-        _showError('Invalid QR code — missing booking ID.');
-        return;
-      }
-      _processBookingId(bookingId);
-    } catch (_) {
-      _showError('Could not read QR code. Please try again.');
+    final user = ref.read(userProvider).valueOrNull;
+    if (user == null) {
+      _showError('You must be logged in to scan QR codes.');
+      return;
     }
+    final stationId = user.stationId;
+    if (stationId == null || stationId.isEmpty) {
+      _showError('Your account is not linked to a station. Contact your administrator.');
+      return;
+    }
+    _processQrPayload(raw, user.uid, stationId);
   }
 
-  void _processBookingId(String bookingId) {
-    final bookings = ref.read(todayBookingsProvider);
-    final booking = bookings.where((b) => b.id == bookingId).firstOrNull;
+  Future<void> _processQrPayload(String raw, String attendantUid, String stationId) async {
+    try {
+      final qrService = ref.read(qrServiceProvider);
+      final booking = await qrService.scanAndValidate(
+        qrPayload: raw,
+        attendantUid: attendantUid,
+        attendantStationId: stationId,
+      );
 
-    if (booking == null) {
-      _showError(
-          'Booking not found. It may belong to a different station or date.');
-      return;
+      if (!mounted) return;
+
+      // Build a local BookingModel for UI display from the validated booking
+      final localBooking = BookingModel(
+        id: booking.bookingId,
+        vehicleNumber: booking.vehicleNumber,
+        ownerName: '',
+        fuelType: booking.fuelType,
+        litres: booking.litresBooked,
+        slotTime: DateTime.now(),
+        status: BookingStatus.confirmed,
+        isPrepaid: false,
+        stationId: stationId,
+      );
+      _showConfirmationSheet(localBooking);
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     }
-    if (booking.status == BookingStatus.completed) {
-      _addHistory(booking, success: false);
-      _showError('This QR code has already been used.');
-      return;
-    }
-    if (booking.status == BookingStatus.noShow) {
-      _addHistory(booking, success: false);
-      _showError(
-          'This booking was marked as a no-show and is no longer valid.');
-      return;
-    }
-    _showConfirmationSheet(booking);
   }
 
   void _addHistory(BookingModel booking, {required bool success}) {
@@ -203,7 +210,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
                   if (id.isEmpty) return;
                   Navigator.pop(ctx);
                   setState(() => _processing = true);
-                  _processBookingId(id);
+                  _handleQrCode(id);
                 },
                 child: const Text('Look Up Booking'),
               ),
@@ -268,9 +275,6 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
       builder: (sheetCtx) => _ConfirmationSheet(
         booking: booking,
         onConfirm: () {
-          ref
-              .read(bookingsNotifierProvider.notifier)
-              .markCompleted(booking.id);
           _addHistory(booking, success: true);
           HapticFeedback.heavyImpact();
           SystemSound.play(SystemSoundType.click);

@@ -23,6 +23,12 @@ import '../../features/station_attendant/screens/station_attendant_screen.dart';
 import '../../features/station_attendant/screens/qr_scanner_screen.dart' as attendant_qr;
 import '../../features/station_attendant/screens/vehicle_lookup_screen.dart';
 import '../../features/payment/screens/payment_screen.dart';
+import '../../features/analytics/screens/admin_dashboard_screen.dart';
+import '../../features/analytics/screens/national_analytics_screen.dart';
+import '../../features/analytics/screens/station_analytics_screen.dart';
+import '../../features/analytics/screens/regional_view_screen.dart';
+import '../../features/analytics/screens/user_insights_screen.dart';
+import '../../features/analytics/screens/quota_forecasting_screen.dart';
 import '../constants/app_colors.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -41,6 +47,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Attendant-only routes
       const attendantRoutes = ['/station-attendant', '/attendant-profile', '/attendant-qr-scanner', '/vehicle-lookup'];
+      const adminRoutes = ['/admin', '/analytics/national', '/analytics/stations', '/analytics/regional', '/analytics/users', '/analytics/quota'];
 
       if (currentPath == '/splash') return null;
       if (!isLoggedIn && !isPublicRoute) return '/welcome';
@@ -48,6 +55,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final user = ref.read(userProvider).valueOrNull;
         if (user == null) return null; // User data not loaded yet — let the screen handle navigation
         if (user.role == UserRole.stationAttendant) return '/station-attendant';
+        if (user.role == UserRole.governmentAdmin) return '/admin';
         return '/home';
       }
 
@@ -55,6 +63,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && attendantRoutes.contains(currentPath)) {
         final user = ref.read(userProvider).valueOrNull;
         if (user != null && user.role != UserRole.stationAttendant) {
+          return '/home';
+        }
+      }
+
+      if (isLoggedIn && adminRoutes.contains(currentPath)) {
+        final user = ref.read(userProvider).valueOrNull;
+        if (user != null && user.role != UserRole.governmentAdmin) {
           return '/home';
         }
       }
@@ -156,6 +171,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/vehicle-lookup', builder: (_, state) => const VehicleLookupScreen()),
+
+      GoRoute(path: '/admin', builder: (_, state) => const AdminDashboardScreen()),
+      GoRoute(path: '/analytics/national', builder: (_, state) => const NationalAnalyticsScreen()),
+      GoRoute(path: '/analytics/stations', builder: (_, state) => const StationAnalyticsScreen()),
+      GoRoute(path: '/analytics/regional', builder: (_, state) => const RegionalViewScreen()),
+      GoRoute(path: '/analytics/users', builder: (_, state) => const UserInsightsScreen()),
+      GoRoute(path: '/analytics/quota', builder: (_, state) => const QuotaForecastingScreen()),
+      GoRoute(path: '/admin-profile', builder: (_, state) => const ProfileScreen()),
     ],
   );
 });

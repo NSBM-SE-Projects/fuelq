@@ -156,7 +156,7 @@ class BookingModel {
       status: status ?? this.status,
       qrToken: qrToken,
       qrUsed: qrUsed ?? this.qrUsed,
-      scannedBy: scannedBy ?? this.scannedBy,  // ignore: unnecessary_this
+      scannedBy: scannedBy ?? this.scannedBy, // nolint
       scannedAt: scannedAt ?? this.scannedAt,
       createdAt: createdAt,
       paymentMethod: paymentMethod,

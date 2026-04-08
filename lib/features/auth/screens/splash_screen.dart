@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -51,8 +52,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (mounted) {
         if (doc.exists) {
           final role = doc.data()?['role'] as String? ?? '';
-          if (role == 'stationAttendant') {
+          if (role == UserRole.stationAttendant.name) {
             context.go('/station-attendant');
+          } else if (role == UserRole.governmentAdmin.name) {
+            context.go('/admin');
           } else {
             context.go('/home');
           }

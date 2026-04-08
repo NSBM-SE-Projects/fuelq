@@ -115,11 +115,12 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
 
       _showConfirmationSheet(
         booking,
-        onConfirmed: () async {
+        onConfirmed: (litres) async {
           await qrService.scanAndComplete(
             qrPayload: raw,
             attendantUid: attendantUid,
             attendantStationId: stationId,
+            litresDispensed: litres,
           );
         },
       );
@@ -272,7 +273,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
   }
 
   void _showConfirmationSheet(BookingModel booking,
-      {Future<void> Function()? onConfirmed}) {
+      {Future<void> Function(double litres)? onConfirmed}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -281,9 +282,9 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
       ),
       builder: (sheetCtx) => _ConfirmationSheet(
         booking: booking,
-        onConfirm: () async {
+        onConfirm: (litres) async {
           final messenger = ScaffoldMessenger.of(context);
-          await onConfirmed?.call();
+          await onConfirmed?.call(litres);
           _addHistory(booking, success: true);
           HapticFeedback.heavyImpact();
           if (!mounted) return;
@@ -291,7 +292,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
           messenger.showSnackBar(
             SnackBar(
               content: Text(
-                  '${booking.vehicleNumber} — ${booking.fuelType[0].toUpperCase()}${booking.fuelType.substring(1)} dispensed'),
+                  '${booking.vehicleNumber} — ${litres.toStringAsFixed(1)}L ${booking.fuelType[0].toUpperCase()}${booking.fuelType.substring(1)} dispensed'),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
             ),
@@ -549,7 +550,7 @@ class _HistoryTile extends StatelessWidget {
   }
 }
 
-class _ConfirmationSheet extends StatelessWidget {
+class _ConfirmationSheet extends StatefulWidget {
   const _ConfirmationSheet({
     required this.booking,
     required this.onConfirm,
@@ -557,11 +558,26 @@ class _ConfirmationSheet extends StatelessWidget {
   });
 
   final BookingModel booking;
-  final Future<void> Function() onConfirm;
+  final Future<void> Function(double litres) onConfirm;
   final VoidCallback onCancel;
 
   @override
+  State<_ConfirmationSheet> createState() => _ConfirmationSheetState();
+}
+
+class _ConfirmationSheetState extends State<_ConfirmationSheet> {
+  final _litresController = TextEditingController();
+  bool _confirming = false;
+
+  @override
+  void dispose() {
+    _litresController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final booking = widget.booking;
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -573,7 +589,6 @@ class _ConfirmationSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -582,23 +597,14 @@ class _ConfirmationSheet extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.verified,
-                    color: AppColors.primary, size: 30),
+                child: const Icon(Icons.verified, color: AppColors.primary, size: 30),
               ),
               const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Booking Verified',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  Text(
-                    booking.vehicleNumber,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 14),
-                  ),
+                  const Text('Booking Verified', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  Text(booking.vehicleNumber, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                 ],
               ),
             ],
@@ -609,17 +615,26 @@ class _ConfirmationSheet extends StatelessWidget {
           _Row('Vehicle', booking.vehicleNumber),
           _Row('Fuel Type', '${booking.fuelType[0].toUpperCase()}${booking.fuelType.substring(1)}'),
           _Row('Station', booking.stationName),
-          _Row(
-              'Slot Time',
-              DateFormat('d MMM yyyy, HH:mm')
-                  .format(booking.slotStart)),
-          _Row('QR Used', booking.qrUsed ? 'Yes' : 'No'),
+          _Row('Slot Time', DateFormat('d MMM yyyy, HH:mm').format(booking.slotStart)),
+          const SizedBox(height: 16),
+          const Text('Litres to Dispense', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _litresController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: 'Enter litres',
+              prefixIcon: const Icon(Icons.water_drop_rounded, color: AppColors.primarySoft),
+              suffixText: 'L',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: onCancel,
+                  onPressed: _confirming ? null : widget.onCancel,
                   child: const Text('Cancel'),
                 ),
               ),
@@ -627,9 +642,21 @@ class _ConfirmationSheet extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: ElevatedButton.icon(
-                  onPressed: onConfirm,
-                  icon: const Icon(Icons.local_gas_station, size: 18),
-                  label: const Text('Confirm & Dispense'),
+                  onPressed: _confirming ? null : () async {
+                    final litres = double.tryParse(_litresController.text.trim()) ?? 0;
+                    if (litres <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enter a valid amount'), backgroundColor: AppColors.error),
+                      );
+                      return;
+                    }
+                    setState(() => _confirming = true);
+                    await widget.onConfirm(litres);
+                  },
+                  icon: _confirming
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.local_gas_station, size: 18),
+                  label: Text(_confirming ? 'Dispensing...' : 'Confirm & Dispense'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,

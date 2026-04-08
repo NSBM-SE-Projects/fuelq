@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -32,7 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref
+      final cred = await ref
           .read(authServiceProvider)
           .login(
             email: _emailController.text.trim(),
@@ -40,13 +41,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
 
       if (mounted) {
-        final uid = ref.read(authStateProvider).valueOrNull?.uid;
+        final uid = cred.user?.uid;
         if (uid != null) {
           final doc = await ref.read(firestoreProvider).collection('users').doc(uid).get();
           final role = doc.data()?['role'] as String? ?? '';
           if (mounted) {
-            if (role == 'stationAttendant') {
+            if (role == UserRole.stationAttendant.name) {
               context.go('/station-attendant');
+            } else if (role == UserRole.governmentAdmin.name) {
+              context.go('/admin');
             } else {
               context.go('/home');
             }

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../booking/models/booking_model.dart';
 
-// Active (upcoming) bookings for the current user — used on QR display screen
 final activeBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value([]);
@@ -26,7 +25,6 @@ class QrService {
 
   QrService(this._firestore);
 
-  // Generate a QR payload string from a booking
   static String generatePayload(BookingModel booking) {
     return jsonEncode({
       'bookingId': booking.id,
@@ -36,7 +34,6 @@ class QrService {
     });
   }
 
-  // Parse a QR payload string — returns null if invalid
   static Map<String, dynamic>? parsePayload(String raw) {
     try {
       final data = jsonDecode(raw) as Map<String, dynamic>;
@@ -47,7 +44,6 @@ class QrService {
     }
   }
 
-  // Validate a QR code without marking it used — for showing confirmation before completing
   Future<BookingModel> validate({
     required String qrPayload,
     required String attendantStationId,
@@ -95,11 +91,11 @@ class QrService {
     return booking;
   }
 
-  // Validate and complete — scans the booking, marks QR used, updates status
   Future<BookingModel> scanAndComplete({
     required String qrPayload,
     required String attendantUid,
     required String attendantStationId,
+    double litresDispensed = 0,
   }) async {
     final booking = await validate(
       qrPayload: qrPayload,
@@ -111,6 +107,7 @@ class QrService {
       'scannedBy': attendantUid,
       'scannedAt': Timestamp.fromDate(DateTime.now()),
       'status': BookingStatus.completed.name,
+      'litresDispensed': litresDispensed,
     });
 
     return booking;

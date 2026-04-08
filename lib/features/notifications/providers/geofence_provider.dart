@@ -1,172 +1,112 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../booking/models/booking_model.dart';
 import '../models/geofence_alert_model.dart';
-import '../services/geofence_service.dart';
 import '../services/notification_service.dart';
-import '../../station_attendant/models/booking_model.dart';
-import '../../station_attendant/providers/station_attendant_provider.dart';
 
+final notificationsEnabledProvider = StateProvider<bool>((_) => true);
+final geofenceRadiusProvider = StateProvider<double>((_) => 100.0);
+final geofenceHistoryProvider = StateProvider<List<GeofenceAlertModel>>((_) => []);
+final highlightedVehicleProvider = StateProvider<String?>((_) => null);
 
-final notificationsEnabledProvider = StateProvider<bool>((ref) => true);
-final geofenceRadiusProvider = StateProvider<double>((ref) => 100.0);
+final customerLocationBroadcaster = Provider.autoDispose<void>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return;
 
+  final sub = Geolocator.getPositionStream(
+    locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10),
+  ).listen((pos) async {
+    final snap = await ref.read(firestoreProvider)
+        .collection('bookings')
+        .where('userId', isEqualTo: user.uid)
+        .where('status', isEqualTo: BookingStatus.upcoming.name)
+        .orderBy('slotStart')
+        .limit(1)
+        .get();
 
-final geofenceAlertsProvider =
-    StateProvider<List<GeofenceAlertModel>>((ref) => []);
-
-
-final geofenceHistoryProvider =
-    StateProvider<List<GeofenceAlertModel>>((ref) => []);
-
-
-final highlightedVehicleProvider = StateProvider<String?>((ref) => null);
-
-
-final liveDistanceProvider = StreamProvider<double?>((ref) {
-  return GeofenceService.instance.distanceStream;
-});
-
-
-final geofenceMonitorProvider = Provider<void>((ref) {
-  final radius = ref.watch(geofenceRadiusProvider);
-  final enabled = ref.watch(notificationsEnabledProvider);
-
-  if (!enabled) {
-    GeofenceService.instance.stopMonitoring();
-    return;
-  }
-
-  GeofenceService.instance.startMonitoring(radius: radius);
-  GeofenceService.instance.updateRadius(radius);
-
-  GeofenceService.instance.onGeofenceEntered.listen((distance) async {
-    if (!ref.read(notificationsEnabledProvider)) return;
-
-    GeofenceAlertModel alert;
-    if (useMockData) {
-      alert = GeofenceAlertModel(
-        bookingId: 'mock_booking',
-        vehicleNumber: 'CAB-1234',
-        ownerName: 'Ashen Perera',
-        fuelType: 'Petrol',
-        litres: 14.0,
-        triggeredAt: DateTime.now(),
-        distanceMetres: distance,
-      );
-    } else {
-      // Look up the nearest confirmed/arrived booking as the arriving vehicle.
-      final bookings = ref.read(todayBookingsProvider);
-      final booking = bookings.firstWhere(
-        (b) =>
-            b.status == BookingStatus.confirmed ||
-            b.status == BookingStatus.arrived,
-        orElse: () => bookings.first,
-      );
-      alert = GeofenceAlertModel(
-        bookingId: booking.id,
-        vehicleNumber: booking.vehicleNumber,
-        ownerName: booking.ownerName,
-        fuelType: booking.fuelType,
-        litres: booking.litres,
-        triggeredAt: DateTime.now(),
-        distanceMetres: distance,
-      );
-      // Write to Firestore so the station attendant's device is notified.
-      await FirebaseFirestore.instance.collection('geofence_alerts').add({
-        ...alert.toMap(),
-        'stationId': booking.stationId,
+    if (snap.docs.isNotEmpty) {
+      snap.docs.first.reference.update({
+        'ownerLat': pos.latitude,
+        'ownerLng': pos.longitude,
       });
-    }
-
-    _addAlert(ref, alert);
-  });
-
-  ref.onDispose(GeofenceService.instance.stopMonitoring);
-});
-
-
-void _addAlert(dynamic ref, GeofenceAlertModel alert) {
-  final current = List<GeofenceAlertModel>.from(
-      ref.read(geofenceAlertsProvider));
-  if (!current.any((a) => a.vehicleNumber == alert.vehicleNumber)) {
-    ref.read(geofenceAlertsProvider.notifier).state = [alert, ...current];
-  }
-
-  final history = List<GeofenceAlertModel>.from(
-      ref.read(geofenceHistoryProvider))
-    ..removeWhere((a) => a.vehicleNumber == alert.vehicleNumber);
-  history.insert(0, alert);
-  if (history.length > 20) history.removeLast();
-  ref.read(geofenceHistoryProvider.notifier).state = history;
-
-  ref.read(highlightedVehicleProvider.notifier).state = alert.vehicleNumber;
-
-  if (ref.read(notificationsEnabledProvider)) {
-    NotificationService.instance.showVehicleNearbyNotification(
-      vehicleNumber: alert.vehicleNumber,
-      ownerName: alert.ownerName,
-      distanceMetres: alert.distanceMetres,
-    );
-  }
-}
-
-void dismissAlert(WidgetRef ref, String vehicleNumber) {
-  final current = List<GeofenceAlertModel>.from(
-      ref.read(geofenceAlertsProvider));
-  ref.read(geofenceAlertsProvider.notifier).state =
-      current.where((a) => a.vehicleNumber != vehicleNumber).toList();
-
-  if (ref.read(highlightedVehicleProvider) == vehicleNumber) {
-    ref.read(highlightedVehicleProvider.notifier).state = null;
-  }
-}
-
-void dismissAllAlerts(WidgetRef ref) {
-  ref.read(geofenceAlertsProvider.notifier).state = [];
-  ref.read(highlightedVehicleProvider.notifier).state = null;
-}
-
-final firestoreAlertsWatcherProvider = Provider.autoDispose<void>((ref) {
-  if (useMockData) return;
-
-  final startOfDay =
-      DateTime.now().copyWith(hour: 0, minute: 0, second: 0, millisecond: 0);
-
-  final sub = FirebaseFirestore.instance
-      .collection('geofence_alerts')
-      .where('stationId', isEqualTo: kStationId)
-      .where('triggeredAt',
-          isGreaterThanOrEqualTo: startOfDay.toIso8601String())
-      .snapshots()
-      .listen((snapshot) {
-    for (final change in snapshot.docChanges) {
-      if (change.type != DocumentChangeType.added) continue;
-      if (!ref.read(notificationsEnabledProvider)) continue;
-      final alert = GeofenceAlertModel.fromMap(change.doc.data()!);
-      _addAlert(ref, alert);
     }
   });
 
   ref.onDispose(sub.cancel);
 });
 
-final _mockVehicles = [
-  ('CAB-1234', 'Ashen Perera', 'Petrol', 14.0, 'mock_b1'),
-  ('ABC-5678', 'Nuwan Silva', 'Petrol', 8.0, 'mock_b2'),
-  ('XYZ-9012', 'Kamal Dias', 'Diesel', 20.0, 'mock_b3'),
-];
-void simulateVehicleArrival(WidgetRef ref) {
-  for (int i = 0; i < _mockVehicles.length; i++) {
-    final v = _mockVehicles[i];
-    final alert = GeofenceAlertModel(
-      bookingId: v.$5,
-      vehicleNumber: v.$1,
-      ownerName: v.$2,
-      fuelType: v.$3,
-      litres: v.$4,
-      triggeredAt: DateTime.now(),
-      distanceMetres: 45.0 + (i * 15.0),
+final geofenceMonitorProvider = Provider.autoDispose<void>((ref) {
+  final enabled = ref.watch(notificationsEnabledProvider);
+  if (!enabled) return;
+
+  final radius = ref.watch(geofenceRadiusProvider);
+  final user = ref.watch(userProvider).valueOrNull;
+  if (user == null || user.stationId == null) return;
+
+  NotificationService.instance.init();
+
+  ref.read(firestoreProvider)
+      .collection('stations')
+      .doc(user.stationId)
+      .get()
+      .then((stationDoc) {
+    if (!stationDoc.exists) return;
+    final geoPoint = stationDoc.data()?['location'] as GeoPoint?;
+    if (geoPoint == null) return;
+
+    final stationLat = geoPoint.latitude;
+    final stationLng = geoPoint.longitude;
+
+    final sub = ref.read(firestoreProvider)
+        .collection('bookings')
+        .where('stationId', isEqualTo: user.stationId)
+        .where('status', isEqualTo: BookingStatus.upcoming.name)
+        .snapshots()
+        .listen((snap) {
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final ownerLat = (data['ownerLat'] as num?)?.toDouble();
+        final ownerLng = (data['ownerLng'] as num?)?.toDouble();
+        if (ownerLat == null || ownerLng == null) continue;
+
+        final distance = Geolocator.distanceBetween(ownerLat, ownerLng, stationLat, stationLng);
+        if (distance <= radius) {
+          final booking = BookingModel.fromMap(doc.id, data);
+          _onVehicleNearby(ref, booking, distance);
+        }
+      }
+    });
+
+    ref.onDispose(sub.cancel);
+  });
+});
+
+void _onVehicleNearby(Ref ref, BookingModel booking, double distance) {
+  final history = List<GeofenceAlertModel>.from(ref.read(geofenceHistoryProvider));
+  if (history.any((a) => a.vehicleNumber == booking.vehicleNumber)) return;
+
+  final alert = GeofenceAlertModel(
+    bookingId: booking.id,
+    vehicleNumber: booking.vehicleNumber,
+    ownerName: '',
+    fuelType: booking.fuelType,
+    litres: 0,
+    triggeredAt: DateTime.now(),
+    distanceMetres: distance,
+  );
+
+  history.insert(0, alert);
+  if (history.length > 20) history.removeLast();
+  ref.read(geofenceHistoryProvider.notifier).state = history;
+  ref.read(highlightedVehicleProvider.notifier).state = booking.vehicleNumber;
+
+  if (ref.read(notificationsEnabledProvider)) {
+    NotificationService.instance.showVehicleNearbyNotification(
+      vehicleNumber: booking.vehicleNumber,
+      ownerName: '',
+      distanceMetres: distance,
     );
-    _addAlert(ref, alert);
   }
 }

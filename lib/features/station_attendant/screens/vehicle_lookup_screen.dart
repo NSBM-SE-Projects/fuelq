@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../models/booking_model.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class _VehicleQuotaInfo {
   final String vehicleNumber;
@@ -24,35 +24,51 @@ class _VehicleQuotaInfo {
   bool get isExhausted => remaining <= 0;
 }
 
-// Derive mock quota from sample bookings
-List<_VehicleQuotaInfo> _buildMockQuotas() {
-  final bookings = BookingModel.sampleData;
-  final Map<String, _VehicleQuotaInfo> map = {};
-  for (final b in bookings) {
-    if (map.containsKey(b.vehicleNumber)) continue;
-    final limit = b.fuelType == 'Diesel' ? 32.0 : 16.0;
-    final used = b.status == BookingStatus.completed ? b.litres : 0.0;
-    map[b.vehicleNumber] = _VehicleQuotaInfo(
-      vehicleNumber: b.vehicleNumber,
-      ownerName: b.ownerName,
-      fuelType: b.fuelType,
-      weeklyLimit: limit,
-      used: used,
-    );
-  }
-  return map.values.toList();
-}
-
 final _searchQueryProvider = StateProvider<String>((ref) => '');
 
-final _vehicleResultsProvider = Provider<List<_VehicleQuotaInfo>>((ref) {
-  final query = ref.watch(_searchQueryProvider).trim().toLowerCase();
+final _vehicleResultsProvider =
+    FutureProvider.autoDispose<List<_VehicleQuotaInfo>>((ref) async {
+  final query = ref.watch(_searchQueryProvider).trim().toUpperCase();
   if (query.isEmpty) return [];
-  return _buildMockQuotas()
-      .where((v) =>
-          v.vehicleNumber.toLowerCase().contains(query) ||
-          v.ownerName.toLowerCase().contains(query))
-      .toList();
+
+  final firestore = ref.watch(firestoreProvider);
+
+  // Search users collection for vehicles matching the query
+  final usersSnap = await firestore.collection('users').get();
+  final results = <_VehicleQuotaInfo>[];
+
+  for (final userDoc in usersSnap.docs) {
+    final userData = userDoc.data();
+    final ownerName = userData['name'] as String? ?? '';
+
+    final vehiclesSnap =
+        await firestore.collection('users').doc(userDoc.id).collection('vehicles').get();
+
+    for (final vehicleDoc in vehiclesSnap.docs) {
+      final v = vehicleDoc.data();
+      final vehicleNumber = (v['vehicleNumber'] as String? ?? '').toUpperCase();
+
+      if (vehicleNumber.contains(query) ||
+          ownerName.toUpperCase().contains(query)) {
+        final fuelTypeRaw = v['fuelType'] as String? ?? 'petrol';
+        final fuelType =
+            fuelTypeRaw == 'diesel' ? 'Diesel' : 'Petrol';
+        final weeklyLimit = (v['weeklyLimit'] as num?)?.toDouble() ??
+            (fuelType == 'Diesel' ? 32.0 : 16.0);
+        final used = (v['used'] as num?)?.toDouble() ?? 0.0;
+
+        results.add(_VehicleQuotaInfo(
+          vehicleNumber: v['vehicleNumber'] as String? ?? '',
+          ownerName: ownerName,
+          fuelType: fuelType,
+          weeklyLimit: weeklyLimit,
+          used: used,
+        ));
+      }
+    }
+  }
+
+  return results;
 });
 
 class VehicleLookupScreen extends ConsumerStatefulWidget {
@@ -74,7 +90,7 @@ class _VehicleLookupScreenState extends ConsumerState<VehicleLookupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final results = ref.watch(_vehicleResultsProvider);
+    final resultsAsync = ref.watch(_vehicleResultsProvider);
     final query = ref.watch(_searchQueryProvider);
 
     return Scaffold(
@@ -129,15 +145,23 @@ class _VehicleLookupScreenState extends ConsumerState<VehicleLookupScreen> {
           Expanded(
             child: query.isEmpty
                 ? _EmptyPrompt()
-                : results.isEmpty
-                    ? _NoResults(query: query)
-                    : ListView.builder(
-                        physics: const ClampingScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                        itemCount: results.length,
-                        itemBuilder: (_, i) =>
-                            _VehicleQuotaCard(info: results[i]),
-                      ),
+                : resultsAsync.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(
+                      child: Text('Error: $e',
+                          style: const TextStyle(color: AppColors.error)),
+                    ),
+                    data: (results) => results.isEmpty
+                        ? _NoResults(query: query)
+                        : ListView.builder(
+                            physics: const ClampingScrollPhysics(),
+                            padding: const EdgeInsets.all(16),
+                            itemCount: results.length,
+                            itemBuilder: (_, i) =>
+                                _VehicleQuotaCard(info: results[i]),
+                          ),
+                  ),
           ),
         ],
       ),
@@ -156,7 +180,7 @@ class _EmptyPrompt extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             'Enter a vehicle number or owner name',
-            style: TextStyle(fontSize: 15, color: Colors.black45),
+            style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -179,7 +203,7 @@ class _NoResults extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'No vehicle found for "$query"',
-            style: const TextStyle(fontSize: 15, color: Colors.black45),
+            style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -247,7 +271,7 @@ class _VehicleQuotaCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${info.ownerName} \u00B7 ${info.fuelType}',
+                      '${info.ownerName} \u00B7 ${info.fuelType[0].toUpperCase()}${info.fuelType.substring(1)}',
                       style: const TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                     ),

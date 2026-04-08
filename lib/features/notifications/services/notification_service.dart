@@ -18,6 +18,11 @@ class NotificationService {
 
     await _plugin.initialize(initSettings);
     _initialized = true;
+
+    try {
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.requestNotificationsPermission();
+    } catch (_) {}
   }
 
   Future<void> showVehicleNearbyNotification({

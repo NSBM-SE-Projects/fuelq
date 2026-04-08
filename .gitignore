@@ -56,3 +56,7 @@ local.properties
 CLAUDE.md
 TODO.md
 
+# Setup Files
+setup.bat
+setup.sh
+

@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../models/booking_model.dart';
-import '../providers/station_attendant_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../booking/models/booking_model.dart';
+import '../../booking/providers/booking_provider.dart';
 import 'booking_card.dart';
 
 class TimeSlotSection extends ConsumerStatefulWidget {
@@ -40,7 +41,7 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
 
   String _countdownLabel() {
     if (widget.bookings.isEmpty) return '';
-    final slotTime = widget.bookings.first.slotTime;
+    final slotTime = widget.bookings.first.slotStart;
     final slotStart =
         DateTime(slotTime.year, slotTime.month, slotTime.day, slotTime.hour);
     final slotEnd = slotStart.add(const Duration(hours: 1));
@@ -58,25 +59,49 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
   }
 
   void _confirmNoShow(BuildContext context, BookingModel booking) {
-    final notifier = ref.read(bookingsNotifierProvider.notifier);
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Mark as No-Show?'),
         content: Text(
             '${booking.vehicleNumber} will be marked as a no-show. The slot will be released.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () {
-              notifier.markNoShow(booking.id);
-              Navigator.pop(context);
+              Navigator.pop(ctx);
+              ref
+                  .read(firestoreProvider)
+                  .collection('bookings')
+                  .doc(booking.id)
+                  .update({'status': BookingStatus.noShow.name});
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${booking.vehicleNumber} marked as no-show'),
+                  backgroundColor: AppColors.warning,
+                  action: SnackBarAction(
+                    label: 'Undo',
+                    textColor: Colors.white,
+                    onPressed: () => ref
+                        .read(firestoreProvider)
+                        .collection('bookings')
+                        .doc(booking.id)
+                        .update({
+                      'status': BookingStatus.upcoming.name,
+                      'qrUsed': false,
+                      'scannedBy': null,
+                      'scannedAt': null,
+                    }),
+                  ),
+                ),
+              );
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Confirm'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -86,17 +111,14 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
   @override
   Widget build(BuildContext context) {
     final bookings = widget.bookings;
-    final totalLitres =
-        bookings.fold<double>(0.0, (sum, b) => sum + b.litres);
     final petrolCount =
-        bookings.where((b) => b.fuelType == 'Petrol').length;
+        bookings.where((b) => b.fuelType == 'petrol').length;
     final dieselCount =
-        bookings.where((b) => b.fuelType == 'Diesel').length;
+        bookings.where((b) => b.fuelType == 'diesel').length;
     final completedCount =
         bookings.where((b) => b.status == BookingStatus.completed).length;
     final countdown = _countdownLabel();
     final isActive = countdown == 'Active now';
-    final notifier = ref.read(bookingsNotifierProvider.notifier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,8 +165,6 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
                 ),
               const Spacer(),
               _SlotTag('${bookings.length} vehicles'),
-              const SizedBox(width: 6),
-              _SlotTag('${totalLitres.toStringAsFixed(0)}L total'),
               if (petrolCount > 0) ...[
                 const SizedBox(width: 6),
                 _SlotTag('P:$petrolCount',
@@ -153,7 +173,7 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
               if (dieselCount > 0) ...[
                 const SizedBox(width: 6),
                 _SlotTag('D:$dieselCount',
-                    color: Colors.green.shade700),
+                    color: AppColors.success),
               ],
             ],
           ),
@@ -162,14 +182,13 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
           value: bookings.isEmpty
               ? 0
               : completedCount / bookings.length,
-          backgroundColor: Colors.grey.shade200,
-          color: Colors.green,
+          backgroundColor: AppColors.divider,
+          color: AppColors.success,
           minHeight: 3,
         ),
         ...bookings.map((b) {
           final isDone = b.status == BookingStatus.completed ||
               b.status == BookingStatus.noShow;
-          final isArrived = b.status == BookingStatus.arrived;
 
           return Dismissible(
             key: Key('${b.id}_${b.status.name}'),
@@ -179,10 +198,34 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
             confirmDismiss: (direction) async {
               if (direction == DismissDirection.startToEnd) {
                 HapticFeedback.mediumImpact();
-                if (b.status == BookingStatus.confirmed) {
-                  notifier.markArrived(b.id);
-                } else if (isArrived) {
-                  notifier.markCompleted(b.id);
+                final user = ref.read(userProvider).valueOrNull;
+                if (user != null && b.status == BookingStatus.upcoming) {
+                  await ref.read(bookingServiceProvider).scanBooking(
+                        bookingId: b.id,
+                        attendantId: user.uid,
+                      );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${b.vehicleNumber} marked as completed'),
+                        backgroundColor: AppColors.success,
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          textColor: Colors.white,
+                          onPressed: () => ref
+                              .read(firestoreProvider)
+                              .collection('bookings')
+                              .doc(b.id)
+                              .update({
+                            'status': BookingStatus.upcoming.name,
+                            'qrUsed': false,
+                            'scannedBy': null,
+                            'scannedAt': null,
+                          }),
+                        ),
+                      ),
+                    );
+                  }
                 }
               } else {
                 _confirmNoShow(context, b);
@@ -191,11 +234,9 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
             },
             background: _SwipeBackground(
               alignment: Alignment.centerLeft,
-              color: isArrived ? Colors.green : Colors.orange,
-              icon: isArrived
-                  ? Icons.check_circle_outline
-                  : Icons.directions_car,
-              label: isArrived ? 'Complete' : 'Arrived',
+              color: AppColors.success,
+              icon: Icons.check_circle_outline,
+              label: 'Complete',
               padding: const EdgeInsets.only(left: 28),
             ),
             secondaryBackground: const _SwipeBackground(

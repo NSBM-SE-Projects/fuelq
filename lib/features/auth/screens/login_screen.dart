@@ -39,7 +39,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
 
-      if (mounted) context.go('/home');
+      if (mounted) {
+        final uid = ref.read(authStateProvider).valueOrNull?.uid;
+        if (uid != null) {
+          final doc = await ref.read(firestoreProvider).collection('users').doc(uid).get();
+          final role = doc.data()?['role'] as String? ?? '';
+          if (mounted) {
+            if (role == 'stationAttendant') {
+              context.go('/station-attendant');
+            } else {
+              context.go('/home');
+            }
+          }
+        } else {
+          if (mounted) context.go('/home');
+        }
+      }
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

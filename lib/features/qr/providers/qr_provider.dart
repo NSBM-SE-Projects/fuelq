@@ -1,53 +1,24 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../models/booking_model.dart';
+import '../../booking/models/booking_model.dart';
 
+// Active (upcoming) bookings for the current user — used on QR display screen
 final activeBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
-  final authState = ref.watch(authStateProvider);
-  final user = authState.valueOrNull;
+  final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return Stream.value([]);
 
   return ref
       .watch(firestoreProvider)
       .collection('bookings')
       .where('userId', isEqualTo: user.uid)
+      .where('status', isEqualTo: BookingStatus.upcoming.name)
+      .orderBy('slotStart')
       .snapshots()
-      .map((snapshot) {
-        final all = snapshot.docs
-            .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
-            .toList();
-        final active = all
-            .where((b) => b.status == BookingStatus.confirmed)
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        return active;
-      });
-});
-
-final pastBookingsProvider = StreamProvider<List<BookingModel>>((ref) {
-  final authState = ref.watch(authStateProvider);
-  final user = authState.valueOrNull;
-  if (user == null) return Stream.value([]);
-
-  return ref
-      .watch(firestoreProvider)
-      .collection('bookings')
-      .where('userId', isEqualTo: user.uid)
-      .snapshots()
-      .map((snapshot) {
-        final all = snapshot.docs
-            .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
-            .toList();
-        final past = all
-            .where((b) =>
-                b.status == BookingStatus.completed ||
-                b.status == BookingStatus.expired ||
-                b.status == BookingStatus.cancelled)
-            .toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        return past.take(20).toList();
-      });
+      .map((snap) => snap.docs
+          .map((doc) => BookingModel.fromMap(doc.id, doc.data()))
+          .toList());
 });
 
 class QrService {
@@ -55,55 +26,33 @@ class QrService {
 
   QrService(this._firestore);
 
-  Future<BookingModel> createBooking({
-    required String userId,
-    required String vehicleNumber,
-    required String vehicleId,
-    required String stationId,
-    required String stationName,
-    required String fuelType,
-    required double litresBooked,
-    required String slotDate,
-    required String slotTime,
-  }) async {
-    final docRef = _firestore.collection('bookings').doc();
-
-    final qrPayload = BookingModel.generateQrPayload(
-      bookingId: docRef.id,
-      vehicleNumber: vehicleNumber,
-      litres: litresBooked,
-      fuelType: fuelType,
-      stationId: stationId,
-      slotDate: slotDate,
-      slotTime: slotTime,
-      userId: userId,
-    );
-
-    final booking = BookingModel(
-      bookingId: docRef.id,
-      userId: userId,
-      vehicleNumber: vehicleNumber,
-      vehicleId: vehicleId,
-      stationId: stationId,
-      stationName: stationName,
-      fuelType: fuelType,
-      litresBooked: litresBooked,
-      slotDate: slotDate,
-      slotTime: slotTime,
-      qrCode: qrPayload,
-      createdAt: DateTime.now(),
-    );
-
-    await docRef.set(booking.toMap());
-    return booking;
+  // Generate a QR payload string from a booking
+  static String generatePayload(BookingModel booking) {
+    return jsonEncode({
+      'bookingId': booking.id,
+      'vehicleNumber': booking.vehicleNumber,
+      'stationId': booking.stationId,
+      'qrToken': booking.qrToken,
+    });
   }
 
-  // Validates the QR without marking complete — use before showing confirmation
-  Future<BookingModel> validateOnly({
+  // Parse a QR payload string — returns null if invalid
+  static Map<String, dynamic>? parsePayload(String raw) {
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      if (!data.containsKey('bookingId') || !data.containsKey('qrToken')) return null;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Validate a QR code without marking it used — for showing confirmation before completing
+  Future<BookingModel> validate({
     required String qrPayload,
     required String attendantStationId,
   }) async {
-    final data = BookingModel.parseQrPayload(qrPayload);
+    final data = parsePayload(qrPayload);
     if (data == null) throw Exception('Invalid QR code format');
 
     final bookingId = data['bookingId'] as String;
@@ -113,65 +62,55 @@ class QrService {
     final booking = BookingModel.fromMap(doc.id, doc.data()!);
 
     if (booking.qrUsed) throw Exception('This QR code has already been used');
-    if (booking.status != BookingStatus.confirmed) {
+    if (booking.status != BookingStatus.upcoming) {
       throw Exception('Booking is ${booking.status.name}');
     }
     if (booking.stationId != attendantStationId) {
       throw Exception('This booking is for a different station');
     }
+    if (booking.qrToken != data['qrToken']) {
+      throw Exception('Invalid QR token');
+    }
 
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-    if (booking.slotDate != todayStr) {
-      throw Exception('This booking is for ${booking.slotDate}, not today');
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final bookingDay = DateTime(booking.slotStart.year, booking.slotStart.month, booking.slotStart.day);
+    if (bookingDay != today) {
+      throw Exception('This booking is not for today');
+    }
+
+    final configDoc = await _firestore.collection('config').doc('booking').get();
+    final arrivalMins = (configDoc.data()?['arrivalWindowMinutes'] as num?)?.toInt() ?? 15;
+    final slotMins = (configDoc.data()?['slotDurationMinutes'] as num?)?.toInt() ?? 30;
+    final windowStart = booking.slotStart.subtract(Duration(minutes: arrivalMins));
+    final windowEnd = booking.slotStart.add(Duration(minutes: slotMins + arrivalMins));
+
+    if (now.isBefore(windowStart)) {
+      throw Exception('Too early — this slot starts at ${booking.slotStart.hour.toString().padLeft(2, '0')}:${booking.slotStart.minute.toString().padLeft(2, '0')}');
+    }
+    if (now.isAfter(windowEnd)) {
+      throw Exception('This time slot has expired');
     }
 
     return booking;
   }
 
-  Future<BookingModel> scanAndValidate({
+  // Validate and complete — scans the booking, marks QR used, updates status
+  Future<BookingModel> scanAndComplete({
     required String qrPayload,
     required String attendantUid,
     required String attendantStationId,
   }) async {
-    final data = BookingModel.parseQrPayload(qrPayload);
-    if (data == null) {
-      throw Exception('Invalid QR code format');
-    }
+    final booking = await validate(
+      qrPayload: qrPayload,
+      attendantStationId: attendantStationId,
+    );
 
-    final bookingId = data['bookingId'] as String;
-    final docRef = _firestore.collection('bookings').doc(bookingId);
-    final doc = await docRef.get();
-
-    if (!doc.exists) {
-      throw Exception('Booking not found');
-    }
-
-    final booking = BookingModel.fromMap(doc.id, doc.data()!);
-
-    if (booking.qrUsed) {
-      throw Exception('This QR code has already been used');
-    }
-    if (booking.status != BookingStatus.confirmed) {
-      throw Exception('Booking is ${booking.status.name}');
-    }
-    if (booking.stationId != attendantStationId) {
-      throw Exception('This booking is for a different station');
-    }
-
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-    if (booking.slotDate != todayStr) {
-      throw Exception('This booking is for ${booking.slotDate}, not today');
-    }
-
-    await docRef.update({
+    await _firestore.collection('bookings').doc(booking.id).update({
       'qrUsed': true,
       'scannedBy': attendantUid,
-      'scannedAt': FieldValue.serverTimestamp(),
-      'status': 'completed',
+      'scannedAt': Timestamp.fromDate(DateTime.now()),
+      'status': BookingStatus.completed.name,
     });
 
     return booking;

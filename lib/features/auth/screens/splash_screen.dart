@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -36,7 +37,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _navigate() async {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    context.go('/station-attendant');
+
+    final authState = ref.read(authStateProvider);
+    final user = authState.valueOrNull;
+
+    if (user != null) {
+      // Check if user has profile data by reading Firestore directly
+      final doc = await ref
+          .read(firestoreProvider)
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (mounted) {
+        if (doc.exists) {
+          final role = doc.data()?['role'] as String? ?? '';
+          if (role == 'stationAttendant') {
+            context.go('/station-attendant');
+          } else {
+            context.go('/home');
+          }
+        } else {
+          context.go('/welcome');
+        }
+      }
+    } else {
+      if (mounted) context.go('/welcome');
+    }
   }
 
   @override

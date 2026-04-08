@@ -5,19 +5,19 @@ import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../booking/models/booking_model.dart';
 import '../../qr/providers/qr_provider.dart';
-import '../models/booking_model.dart';
 
 class _ScanRecord {
   final String vehicleNumber;
-  final String ownerName;
+  final String fuelType;
   final BookingStatus status;
   final DateTime scannedAt;
   final bool success;
 
   const _ScanRecord({
     required this.vehicleNumber,
-    required this.ownerName,
+    required this.fuelType,
     required this.status,
     required this.scannedAt,
     required this.success,
@@ -33,9 +33,14 @@ class QrScannerScreen extends ConsumerStatefulWidget {
 
 class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
     with TickerProviderStateMixin {
-  final MobileScannerController _controller = MobileScannerController();
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    facing: CameraFacing.back,
+    autoStart: true,
+  );
   bool _processing = false;
   bool _flashDetected = false;
+  String? _lastScannedCode;
 
   late AnimationController _scanLineController;
   late Animation<double> _scanLineAnimation;
@@ -65,8 +70,9 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
   void _onDetect(BarcodeCapture capture) {
     if (_processing) return;
     final raw = capture.barcodes.firstOrNull?.rawValue;
-    if (raw == null) return;
+    if (raw == null || raw == _lastScannedCode) return;
 
+    _lastScannedCode = raw;
     setState(() => _processing = true);
     _controller.stop();
     HapticFeedback.mediumImpact();
@@ -89,38 +95,28 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
     }
     final stationId = user.stationId;
     if (stationId == null || stationId.isEmpty) {
-      _showError('Your account is not linked to a station. Contact your administrator.');
+      _showError(
+          'Your account is not linked to a station. Contact your administrator.');
       return;
     }
     _processQrPayload(raw, user.uid, stationId);
   }
 
-  Future<void> _processQrPayload(String raw, String attendantUid, String stationId) async {
+  Future<void> _processQrPayload(
+      String raw, String attendantUid, String stationId) async {
     try {
       final qrService = ref.read(qrServiceProvider);
-      final booking = await qrService.validateOnly(
+      final booking = await qrService.validate(
         qrPayload: raw,
         attendantStationId: stationId,
       );
 
       if (!mounted) return;
 
-      final localBooking = BookingModel(
-        id: booking.bookingId,
-        vehicleNumber: booking.vehicleNumber,
-        ownerName: booking.userId,
-        fuelType: booking.fuelType,
-        litres: booking.litresBooked,
-        slotTime: DateTime.now(),
-        status: BookingStatus.confirmed,
-        isPrepaid: false,
-        stationId: stationId,
-      );
-
       _showConfirmationSheet(
-        localBooking,
+        booking,
         onConfirmed: () async {
-          await qrService.scanAndValidate(
+          await qrService.scanAndComplete(
             qrPayload: raw,
             attendantUid: attendantUid,
             attendantStationId: stationId,
@@ -139,7 +135,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
         0,
         _ScanRecord(
           vehicleNumber: booking.vehicleNumber,
-          ownerName: booking.ownerName,
+          fuelType: booking.fuelType,
           status: booking.status,
           scannedAt: DateTime.now(),
           success: success,
@@ -152,13 +148,15 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
   void _showError(String message) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
         title: const Text('Scan Failed'),
         content: Text(message),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               setState(() => _processing = false);
               _controller.start();
             },
@@ -195,14 +193,14 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
             const SizedBox(height: 4),
             const Text(
               'Enter the booking ID from the vehicle owner\'s app',
-              style: TextStyle(fontSize: 13, color: Colors.black54),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: textController,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: 'e.g. b1, b2, b3...',
+                hintText: 'Booking ID',
                 prefixIcon: const Icon(Icons.confirmation_number_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -262,7 +260,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(
                   child: Text('No scans yet',
-                      style: TextStyle(color: Colors.black45)),
+                      style: TextStyle(color: AppColors.textLight)),
                 ),
               )
             else
@@ -273,7 +271,8 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
     );
   }
 
-  void _showConfirmationSheet(BookingModel booking, {Future<void> Function()? onConfirmed}) {
+  void _showConfirmationSheet(BookingModel booking,
+      {Future<void> Function()? onConfirmed}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -284,31 +283,31 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
         booking: booking,
         onConfirm: () async {
           final messenger = ScaffoldMessenger.of(context);
-          final nav = Navigator.of(context);
-          final sheetNav = Navigator.of(sheetCtx);
           await onConfirmed?.call();
           _addHistory(booking, success: true);
           HapticFeedback.heavyImpact();
-          SystemSound.play(SystemSoundType.click);
           if (!mounted) return;
-          sheetNav.pop();
-          nav.pop();
+          Navigator.pop(sheetCtx);
           messenger.showSnackBar(
             SnackBar(
               content: Text(
-                  '${booking.vehicleNumber} — ${booking.litres.toStringAsFixed(0)}L dispensed'),
-              backgroundColor: Colors.green,
+                  '${booking.vehicleNumber} — ${booking.fuelType[0].toUpperCase()}${booking.fuelType.substring(1)} dispensed'),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
             ),
           );
         },
-        onCancel: () {
-          Navigator.pop(sheetCtx);
-          setState(() => _processing = false);
-          _controller.start();
-        },
+        onCancel: () => Navigator.pop(sheetCtx),
       ),
-    );
+    ).whenComplete(() {
+      if (mounted && _processing) {
+        setState(() => _processing = false);
+        _controller.start();
+        Future.delayed(const Duration(seconds: 3), () {
+          _lastScannedCode = null;
+        });
+      }
+    });
   }
 
   @override
@@ -515,7 +514,9 @@ class _HistoryTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              record.success ? Icons.check_circle_outline : Icons.cancel_outlined,
+              record.success
+                  ? Icons.check_circle_outline
+                  : Icons.cancel_outlined,
               size: 18,
               color: record.success ? AppColors.success : AppColors.error,
             ),
@@ -531,16 +532,16 @@ class _HistoryTile extends StatelessWidget {
                       fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 Text(
-                  record.ownerName,
+                  '${record.fuelType[0].toUpperCase()}${record.fuelType.substring(1)}',
                   style: const TextStyle(
-                      fontSize: 12, color: Colors.black54),
+                      fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
           Text(
             DateFormat('HH:mm').format(record.scannedAt),
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
+            style: const TextStyle(fontSize: 12, color: AppColors.textLight),
           ),
         ],
       ),
@@ -561,8 +562,6 @@ class _ConfirmationSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAlreadyArrived = booking.status == BookingStatus.arrived;
-
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -598,48 +597,23 @@ class _ConfirmationSheet extends StatelessWidget {
                   Text(
                     booking.vehicleNumber,
                     style: const TextStyle(
-                        color: Colors.black54, fontSize: 14),
+                        color: AppColors.textSecondary, fontSize: 14),
                   ),
                 ],
               ),
             ],
           ),
-          if (isAlreadyArrived) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.info_outline,
-                      size: 16, color: AppColors.warning),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Vehicle already marked as arrived — confirm to complete dispensing.',
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.warning),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 12),
-          _Row('Owner', booking.ownerName),
-          _Row('Fuel Type', booking.fuelType),
-          _Row('Litres to Dispense',
-              '${booking.litres.toStringAsFixed(0)} L'),
-          _Row('Payment',
-              booking.isPrepaid ? '✓ Prepaid' : 'Collect Cash at pump'),
+          _Row('Vehicle', booking.vehicleNumber),
+          _Row('Fuel Type', '${booking.fuelType[0].toUpperCase()}${booking.fuelType.substring(1)}'),
+          _Row('Station', booking.stationName),
+          _Row(
+              'Slot Time',
+              DateFormat('d MMM yyyy, HH:mm')
+                  .format(booking.slotStart)),
+          _Row('QR Used', booking.qrUsed ? 'Yes' : 'No'),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -683,7 +657,7 @@ class _Row extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: const TextStyle(color: Colors.black54, fontSize: 14)),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
           Text(value,
               style: const TextStyle(
                   fontWeight: FontWeight.w600, fontSize: 14)),

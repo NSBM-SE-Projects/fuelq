@@ -50,9 +50,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           .get();
       if (mounted) {
         if (doc.exists) {
-          context.go('/home');
+          final role = doc.data()?['role'] as String? ?? '';
+          if (role == 'stationAttendant') {
+            context.go('/station-attendant');
+          } else {
+            context.go('/home');
+          }
         } else {
-          // Signed in but no profile — go to welcome
           context.go('/welcome');
         }
       }

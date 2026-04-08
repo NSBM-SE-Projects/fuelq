@@ -322,12 +322,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 }
 
-Color _fuelTypeColor(FuelType type) {
+Color _fuelTypeColor(StationFuelType type) {
     switch (type) {
-      case FuelType.petrol92: return Colors.amber;
-      case FuelType.petrol95: return Colors.red;
-      case FuelType.diesel: return Colors.green;
-      case FuelType.superDiesel: return Colors.black;
+      case StationFuelType.petrol92: return Colors.amber;
+      case StationFuelType.petrol95: return Colors.red;
+      case StationFuelType.diesel: return Colors.green;
+      case StationFuelType.superDiesel: return Colors.black;
   }
 }
 

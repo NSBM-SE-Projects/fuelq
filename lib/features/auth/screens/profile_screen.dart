@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/vehicle_model.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -184,6 +185,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (user.role != UserRole.stationAttendant) ...[
                       const SizedBox(height: 24),
                       // Vehicles section
                       Row(
@@ -262,6 +264,7 @@ class ProfileScreen extends ConsumerWidget {
                           );
                         },
                       ),
+                      ],
                       const SizedBox(height: 24),
                       // Logout
                       SizedBox(

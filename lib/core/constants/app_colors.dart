@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  //icon
+  // Primary
   static const primary = Color(0xFF1B3A5C);
   static const primaryDark = Color(0xFF0F2440);
   static const primaryLight = Color(0xFF2D5F8B);

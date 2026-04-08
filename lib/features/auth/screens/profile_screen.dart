@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/vehicle_model.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -54,22 +55,25 @@ class ProfileScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        GestureDetector(
-                          onTap: () => context.pop(),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
+                        if (Navigator.of(context).canPop())
+                          GestureDetector(
+                            onTap: () => context.pop(),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
+                          )
+                        else
+                          const SizedBox(width: 40),
                         const Text(
                           'Profile',
                           style: TextStyle(
@@ -181,6 +185,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (user.role != UserRole.stationAttendant) ...[
                       const SizedBox(height: 24),
                       // Vehicles section
                       Row(
@@ -259,6 +264,7 @@ class ProfileScreen extends ConsumerWidget {
                           );
                         },
                       ),
+                      ],
                       const SizedBox(height: 24),
                       // Logout
                       SizedBox(
@@ -268,9 +274,29 @@ class ProfileScreen extends ConsumerWidget {
                             foregroundColor: AppColors.error,
                             side: const BorderSide(color: AppColors.error),
                           ),
-                          onPressed: () async {
-                            await ref.read(authServiceProvider).signOut();
-                            if (context.mounted) context.go('/welcome');
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Sign Out?'),
+                                content: const Text('Are you sure you want to sign out of your account?'),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(ctx);
+                                      await ref.read(authServiceProvider).signOut();
+                                      if (context.mounted) context.go('/welcome');
+                                    },
+                                    child: const Text('Sign Out', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,

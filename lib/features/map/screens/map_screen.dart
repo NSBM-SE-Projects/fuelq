@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../models/station_model.dart';
 import '../providers/station_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:custom_info_window/custom_info_window.dart';
@@ -170,6 +171,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           station.location,
     );
         setState(() => _selectedStation = station);
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLng(
+            LatLng(station.location.latitude - 0.02, station.location.longitude),
+          ),
+        );
         },
       );
     }).toSet();
@@ -250,11 +256,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 right: 16,
                 child: Row(
                   children: [
-                    _MapButton(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -321,12 +322,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 }
 
-Color _fuelTypeColor(FuelType type) {
+Color _fuelTypeColor(StationFuelType type) {
     switch (type) {
-      case FuelType.petrol92: return Colors.amber;
-      case FuelType.petrol95: return Colors.red;
-      case FuelType.diesel: return Colors.green;
-      case FuelType.superDiesel: return Colors.black;
+      case StationFuelType.petrol92: return Colors.amber;
+      case StationFuelType.petrol95: return Colors.red;
+      case StationFuelType.diesel: return Colors.green;
+      case StationFuelType.superDiesel: return Colors.black;
   }
 }
 
@@ -546,6 +547,15 @@ class _StationSheet extends StatelessWidget {
             icon: const Icon(Icons.directions_rounded),
             label: const Text('Get Directions'),
             )
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.push('/book-station', extra: station),
+              icon: const Icon(Icons.calendar_month_rounded),
+              label: const Text('Book Slot'),
+            ),
           ),
           const SizedBox(height: 16),
 

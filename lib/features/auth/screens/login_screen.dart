@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -39,22 +40,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: _passwordController.text,
           );
 
-      // Read role to route admins to admin dashboard
-      String dest = '/home';
-      try {
+      if (mounted) {
         final uid = cred.user?.uid;
         if (uid != null) {
-          final doc = await ref
-              .read(firestoreProvider)
-              .collection('users')
-              .doc(uid)
-              .get();
-          final role = doc.data()?['role'] as String? ?? 'vehicleOwner';
-          if (role == 'governmentAdmin') dest = '/admin';
+          final doc = await ref.read(firestoreProvider).collection('users').doc(uid).get();
+          final role = doc.data()?['role'] as String? ?? '';
+          if (mounted) {
+            if (role == UserRole.stationAttendant.name) {
+              context.go('/station-attendant');
+            } else if (role == UserRole.governmentAdmin.name) {
+              context.go('/admin');
+            } else {
+              context.go('/home');
+            }
+          }
+        } else {
+          if (mounted) context.go('/home');
         }
-      } catch (_) {}
-
-      if (mounted) context.go(dest);
+      }
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

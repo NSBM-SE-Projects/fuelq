@@ -15,22 +15,6 @@ class FuelQApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,
-      scrollBehavior: const _SmoothScrollBehavior(),
     );
   }
-}
-
-class _SmoothScrollBehavior extends MaterialScrollBehavior {
-  const _SmoothScrollBehavior();
-
-  @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) => child; // no stretch, no glow
-
-  @override
-  ScrollPhysics getScrollPhysics(BuildContext context) =>
-      const ClampingScrollPhysics();
 }

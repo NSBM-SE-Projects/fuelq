@@ -46,7 +46,7 @@ class QuotaForecastingScreen extends ConsumerWidget {
               dieselLitres: n.totalDieselMonthly,
             ),
             loading: () => Co2Result.zero,
-            error: (_, _) => Co2Result.zero,
+            error: (_, __) => Co2Result.zero,
           );
 
           return SingleChildScrollView(

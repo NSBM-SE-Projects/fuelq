@@ -185,7 +185,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      if (user.role != UserRole.stationAttendant) ...[
+                      if (user.role == UserRole.vehicleOwner) ...[
                       const SizedBox(height: 24),
                       // Vehicles section
                       Row(

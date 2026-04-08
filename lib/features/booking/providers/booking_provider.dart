@@ -13,6 +13,8 @@ final bookingConfigProvider = FutureProvider<BookingConfig>((ref) async {
       cancelWindowMinutes: 30,
       arrivalWindowMinutes: 15,
       maxBookingsPerVehiclePerDay: 1,
+      petrolPricePerLiter: 366.0,
+      dieselPricePerLiter: 336.0,
     );
   }
   return BookingConfig.fromMap(doc.data()!);
@@ -71,6 +73,10 @@ class BookingService {
     required String vehicleNumber,
     required String fuelType,
     required DateTime slotStart,
+    required String paymentMethod,
+    required String paymentStatus,
+    required double amount,
+    String? cardLast4,
   }) async {
     // Check if vehicle already has a booking this day
     final dayStart = DateTime(slotStart.year, slotStart.month, slotStart.day);
@@ -99,6 +105,10 @@ class BookingService {
       status: BookingStatus.upcoming,
       qrToken: _uuid.v4(),
       createdAt: DateTime.now(),
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentStatus,
+      amount: amount,
+      cardLast4: cardLast4,
     );
     await docRef.set(booking.toMap());
     return booking;

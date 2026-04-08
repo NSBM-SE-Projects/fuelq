@@ -32,14 +32,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref
+      final cred = await ref
           .read(authServiceProvider)
           .login(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
 
-      if (mounted) context.go('/home');
+      // Read role to route admins to admin dashboard
+      String dest = '/home';
+      try {
+        final uid = cred.user?.uid;
+        if (uid != null) {
+          final doc = await ref
+              .read(firestoreProvider)
+              .collection('users')
+              .doc(uid)
+              .get();
+          final role = doc.data()?['role'] as String? ?? 'vehicleOwner';
+          if (role == 'governmentAdmin') dest = '/admin';
+        }
+      } catch (_) {}
+
+      if (mounted) context.go(dest);
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

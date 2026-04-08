@@ -10,8 +10,8 @@ import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/vehicle_registration_screen.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/models/user_model.dart';
 import '../../features/dashboard/screens/home_screen.dart';
-import '../../features/dashboard/screens/quota_dashboard_screen.dart';
 import '../../features/map/screens/map_screen.dart';
 import '../../features/map/models/station_model.dart';
 import '../../features/booking/screens/station_booking_screen.dart';
@@ -19,6 +19,9 @@ import '../../features/booking/screens/booking_confirmation_screen.dart';
 import '../../features/booking/screens/booking_detail_screen.dart';
 import '../../features/booking/screens/my_bookings_screen.dart';
 import '../../features/booking/models/booking_model.dart';
+import '../../features/station_attendant/screens/station_attendant_screen.dart';
+import '../../features/station_attendant/screens/qr_scanner_screen.dart' as attendant_qr;
+import '../../features/station_attendant/screens/vehicle_lookup_screen.dart';
 import '../../features/payment/screens/payment_screen.dart';
 import '../constants/app_colors.dart';
 
@@ -36,9 +39,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isPublicRoute = publicRoutes.contains(currentPath);
       final isRegistrationRoute = registrationRoutes.contains(currentPath);
 
+      // Attendant-only routes
+      const attendantRoutes = ['/station-attendant', '/attendant-profile', '/attendant-qr-scanner', '/vehicle-lookup'];
+
       if (currentPath == '/splash') return null;
       if (!isLoggedIn && !isPublicRoute) return '/welcome';
-      if (isLoggedIn && isPublicRoute && currentPath != '/splash' && !isRegistrationRoute) return '/home';
+      if (isLoggedIn && isPublicRoute && currentPath != '/splash' && !isRegistrationRoute) {
+        final user = ref.read(userProvider).valueOrNull;
+        if (user == null) return null; // User data not loaded yet — let the screen handle navigation
+        if (user.role == UserRole.stationAttendant) return '/station-attendant';
+        return '/home';
+      }
+
+      // Role guard: redirect non-attendants away from attendant routes
+      if (isLoggedIn && attendantRoutes.contains(currentPath)) {
+        final user = ref.read(userProvider).valueOrNull;
+        if (user != null && user.role != UserRole.stationAttendant) {
+          return '/home';
+        }
+      }
 
       return null;
     },
@@ -81,7 +100,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // Screens that push on top of the nav bar
-      GoRoute(path: '/quota', builder: (_, state) => const QuotaDashboardScreen()),
       GoRoute(
         path: '/book-station',
         builder: (_, state) {
@@ -120,6 +138,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return BookingDetailScreen(booking: booking);
         },
       ),
+      // Station attendant with bottom nav
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return _AttendantShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/station-attendant', builder: (_, state) => const StationAttendantScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/attendant-qr-scanner', builder: (_, state) => const attendant_qr.QrScannerScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/attendant-profile', builder: (_, state) => const ProfileScreen()),
+          ]),
+        ],
+      ),
+      GoRoute(path: '/vehicle-lookup', builder: (_, state) => const VehicleLookupScreen()),
     ],
   );
 });
@@ -153,6 +189,42 @@ class _MainShell extends StatelessWidget {
             icon: Icon(Icons.calendar_today_outlined),
             selectedIcon: Icon(Icons.calendar_today_rounded, color: AppColors.primary),
             label: 'Bookings',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: AppColors.primary),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttendantShell extends StatelessWidget {
+  final StatefulNavigationShell navigationShell;
+
+  const _AttendantShell({required this.navigationShell});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: (index) => navigationShell.goBranch(index, initialLocation: index == navigationShell.currentIndex),
+        backgroundColor: Colors.white,
+        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard_rounded, color: AppColors.primary),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.qr_code_scanner_outlined),
+            selectedIcon: Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+            label: 'QR',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

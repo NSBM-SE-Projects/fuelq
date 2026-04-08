@@ -156,7 +156,7 @@ class BookingModel {
       status: status ?? this.status,
       qrToken: qrToken,
       qrUsed: qrUsed ?? this.qrUsed,
-      scannedBy: scannedBy ?? this.scannedBy,
+      scannedBy: scannedBy ?? this.scannedBy,  // ignore: unnecessary_this
       scannedAt: scannedAt ?? this.scannedAt,
       createdAt: createdAt,
       paymentMethod: paymentMethod,
@@ -176,5 +176,3 @@ class BookingModel {
   static String _formatTime(DateTime dt) =>
     '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 }
-
-// 

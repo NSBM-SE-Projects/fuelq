@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/booking_model.dart';
+import '../../qr/providers/qr_provider.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
   final BookingModel booking;
@@ -54,7 +55,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     QrImageView(
-                      data: booking.qrToken,
+                      data: QrService.generatePayload(booking),
                       version: QrVersions.auto,
                       size: 160,
                       eyeStyle: const QrEyeStyle(color: AppColors.primaryDark, eyeShape: QrEyeShape.circle),

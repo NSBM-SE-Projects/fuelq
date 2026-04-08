@@ -46,8 +46,8 @@ class QuotaModel {
     final fuelType = map['fuelType'] as String? ?? 'petrol';
     return QuotaModel(
       vehicleId: vehicleId,
-      vehicleNumber: map['vehicleNumber'] as String? ?? ' ',
-      nickname: map['nickname'] as String? ?? ' ',
+      vehicleNumber: map['vehicleNumber'] as String? ?? '',
+      nickname: map['nickname'] as String? ?? '',
       fuelType: fuelType,
       weeklyLimit: (map['weeklyLimit'] as num?)?.toDouble() ?? _defaultLimit(fuelType),
       used: (map['used'] as num?)?.toDouble()  ?? 0,

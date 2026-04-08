@@ -54,6 +54,16 @@ dependencies:
   # UI
   flutter_screenutil:
 
+  # Notifications & Geofence
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^18.0.0
+
+  # Persistence
+  shared_preferences: ^2.3.0
+
+  # Utilities
+  intl: ^0.19.0
+
   cupertino_icons: ^1.0.8
   url_launcher: ^6.3.2
   custom_info_window: ^1.0.1

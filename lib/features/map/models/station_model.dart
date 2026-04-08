@@ -3,14 +3,14 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 enum StationAvailability { available, busy, full, closed }
 
-enum FuelType { petrol92, petrol95, diesel, superDiesel }
+enum StationFuelType { petrol92, petrol95, diesel, superDiesel }
 
 class StationModel {
   final String id;
   final String name;
   final String address;
   final LatLng location;
-  final List<FuelType> fuelTypes;
+  final List<StationFuelType> fuelTypes;
   final StationAvailability availability;
   final int currentQueue;
   final int maxQueue;
@@ -33,10 +33,10 @@ const StationModel({
 });
 
 factory StationModel.fromMap(String id, Map<String, dynamic> map) {
-  final GeoPoint geoPoint = map ['location'] as GeoPoint;
+  final GeoPoint geoPoint = map['location'] as GeoPoint;
   final rawFuelTypes = (map['fuelTypes'] as List<dynamic>?)
           ?.map((e) => _parseFuelType(e as String))
-          .whereType<FuelType>()
+          .whereType<StationFuelType>()
           .toList() ??
       [];
 
@@ -46,7 +46,7 @@ factory StationModel.fromMap(String id, Map<String, dynamic> map) {
       address: map['address'] as String? ?? '',
       location: LatLng(geoPoint.latitude, geoPoint.longitude),
       fuelTypes: rawFuelTypes,
-      availability: _parseAvailability(map['availabilty'] as String?),
+      availability: _parseAvailability(map['availability'] as String?),
       currentQueue: (map['currentQueue'] as num?)?.toInt() ?? 0,
       maxQueue: (map['maxQueue'] as num?)?.toInt() ?? 50,
       openTime: map['openTime'] as String? ?? '06:00',
@@ -73,9 +73,9 @@ static StationAvailability _parseAvailability(String? value) =>
   orElse: () => StationAvailability.available,
   );
 
-static FuelType? _parseFuelType(String value) {
+static StationFuelType? _parseFuelType(String value) {
   try {
-    return FuelType.values.firstWhere((e) => e.name == value);
+    return StationFuelType.values.firstWhere((e) => e.name == value);
   }
   catch (_) {
     return null;
@@ -94,12 +94,12 @@ String get availabilityLabel {
 
 String get fuelTypesLabel => fuelTypes.map(fuelTypeLabel).join(' . ');
 
-static String fuelTypeLabel(FuelType type) {
+static String fuelTypeLabel(StationFuelType type) {
   switch (type) {
-    case FuelType.petrol92: return 'Petrol 92';
-    case FuelType.petrol95: return 'Petrol 95';
-    case FuelType.diesel: return 'Diesel';
-    case FuelType.superDiesel: return 'Super Diesel';
+    case StationFuelType.petrol92: return 'Petrol 92';
+    case StationFuelType.petrol95: return 'Petrol 95';
+    case StationFuelType.diesel: return 'Diesel';
+    case StationFuelType.superDiesel: return 'Super Diesel';
   }
 }
 }

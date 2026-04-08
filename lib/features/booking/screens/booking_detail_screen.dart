@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/booking_model.dart';
 import '../providers/booking_provider.dart';
+import '../../qr/providers/qr_provider.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   final BookingModel booking;
@@ -82,7 +83,7 @@ class BookingDetailScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 16),
                             QrImageView(
-                              data: booking.qrToken,
+                              data: QrService.generatePayload(booking),
                               version: QrVersions.auto,
                               size: 200,
                               eyeStyle: const QrEyeStyle(color: AppColors.primaryDark, eyeShape: QrEyeShape.circle),

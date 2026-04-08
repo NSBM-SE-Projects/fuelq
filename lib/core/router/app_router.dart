@@ -13,6 +13,12 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/home_screen.dart';
 import '../../features/dashboard/screens/quota_dashboard_screen.dart';
 import '../../features/map/screens/map_screen.dart';
+import '../../features/analytics/screens/admin_dashboard_screen.dart';
+import '../../features/analytics/screens/national_analytics_screen.dart';
+import '../../features/analytics/screens/station_analytics_screen.dart';
+import '../../features/analytics/screens/regional_view_screen.dart';
+import '../../features/analytics/screens/user_insights_screen.dart';
+import '../../features/analytics/screens/quota_forecasting_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -101,6 +107,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/map',
         builder: (context, state) => const MapScreen(),
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/national',
+        builder: (context, state) => const NationalAnalyticsScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/stations',
+        builder: (context, state) => const StationAnalyticsScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/regional',
+        builder: (context, state) => const RegionalViewScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/users',
+        builder: (context, state) => const UserInsightsScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/quota',
+        builder: (context, state) => const QuotaForecastingScreen(),
       ),
     ],
   );

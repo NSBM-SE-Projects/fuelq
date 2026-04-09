@@ -38,26 +38,36 @@ dependencies:
 
   # State Management (Riverpod)
   flutter_riverpod: ^2.6.1
-  riverpod_annotation:  ^2.6.1
+  riverpod_annotation: ^2.6.1
 
-# Maps & Location
-google_maps_flutter:
-geolocator:
+  # Maps & Location
+  google_maps_flutter:
+  geolocator:
 
-# QR
-qr_flutter:
-mobile_scanner:
+  # QR
+  qr_flutter:
+  mobile_scanner:
 
-#Routing
-go_router:
+  # Routing
+  go_router:
 
-# UI
-flutter_screenutil:
+  # UI
+  flutter_screenutil:
 
+  # Notifications & Geofence
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^18.0.0
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # Persistence
+  shared_preferences: ^2.3.0
+
+  # Utilities
+  intl: ^0.19.0
+
   cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.2
+  custom_info_window: ^1.0.1
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +79,13 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -81,10 +98,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/
+    - assets/markers/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -17,18 +17,19 @@ cd fuelq
 
 Note: run each line of command seperately don't copy paste at once!
 
-## Step 2 -> Download the secret files
+## Step 2 -> Download the secret setup files
 
-Contact [dwainXDL](https://github.com/dwainXDL) for the shared Google Drive link, after the download:
+Contact [dwainXDL](https://github.com/dwainXDL) for the shared Google Drive link, after the download (of your platform):
 
-Place:
-
-- google-services.json -> fuelq -> android -> app -> *
-- firebase_options.dart -> fuelq -> lib -> *
+Place the setup file in the root folder of the project.
 
 ## Step 3 -> Run the setup script
 
 Mac/Linux:
+```bash
+chmod +x setup.sh
+```
+
 ```bash
 ./setup.sh
 ```
@@ -37,6 +38,8 @@ Windows:
 ```bat
 setup.bat
 ```
+
+Note: Run in Command Prompt if it isn't running
 
 ## Step 4 -> Run the app
 

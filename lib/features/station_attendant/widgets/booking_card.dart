@@ -131,21 +131,63 @@ class BookingCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _markCompleted(BuildContext context, WidgetRef ref) async {
-    final user = ref.read(userProvider).valueOrNull;
-    if (user == null) return;
-    try {
-      await ref.read(bookingServiceProvider).scanBooking(
-            bookingId: booking.id,
-            attendantId: user.uid,
-          );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-        );
-      }
-    }
+  void _markCompleted(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dispense Fuel'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${booking.vehicleNumber} — ${booking.fuelType[0].toUpperCase()}${booking.fuelType.substring(1)}',
+                style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Litres to dispense',
+                suffixText: 'L',
+                prefixIcon: const Icon(Icons.water_drop_rounded, color: AppColors.primarySoft),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final litres = double.tryParse(controller.text.trim()) ?? 0;
+              if (litres <= 0) return;
+              Navigator.pop(ctx);
+              final user = ref.read(userProvider).valueOrNull;
+              if (user == null) return;
+              try {
+                await ref.read(bookingServiceProvider).scanBooking(
+                      bookingId: booking.id,
+                      attendantId: user.uid,
+                      litresDispensed: litres,
+                    );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                  );
+                }
+              }
+            },
+            child: const Text('Dispense', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _markNoShow(BuildContext context, WidgetRef ref) async {

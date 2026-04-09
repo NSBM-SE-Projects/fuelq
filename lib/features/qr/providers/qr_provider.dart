@@ -110,6 +110,15 @@ class QrService {
       'litresDispensed': litresDispensed,
     });
 
+    if (litresDispensed > 0) {
+      final vehicleRef = _firestore.collection('users').doc(booking.userId).collection('vehicles').doc(booking.vehicleId);
+      final vehicleDoc = await vehicleRef.get();
+      if (vehicleDoc.exists) {
+        final currentUsed = (vehicleDoc.data()?['used'] as num?)?.toDouble() ?? 0;
+        await vehicleRef.update({'used': currentUsed + litresDispensed});
+      }
+    }
+
     return booking;
   }
 }

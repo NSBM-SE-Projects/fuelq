@@ -1,17 +1,101 @@
-# fuelq
+# ⛽ FuelPass LK - Smart Fuel Quota Management
 
-A new Flutter project.
+**PUSL2023 - Mobile Application Development Coursework**
 
-## Getting Started
+<div>
+  <img src="./assets/images/logo.png" alt="Tri-Meter Logo" height="300"/>
+</div>
 
-This project is a starting point for a Flutter application.
+## 📌 Overview
 
-A few resources to get you started if this is your first Flutter project:
+Flutter mobile application for smart fuel quota management in Sri Lanka 🇱🇰
+Single app serving three user roles:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+🚗 Vehicle Owners
+⛽ Fuel Station Attendants
+🏛️ Government Administrators
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Firestore](https://img.shields.io/badge/Cloud_Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Google Maps](https://img.shields.io/badge/Google_Maps-4285F4?style=for-the-badge&logo=google-maps&logoColor=white)
+![Riverpod](https://img.shields.io/badge/Riverpod-0553B1?style=for-the-badge&logoColor=white)
+![GoRouter](https://img.shields.io/badge/GoRouter-02569B?style=for-the-badge&logoColor=white)
+![Material 3](https://img.shields.io/badge/Material_3-6750A4?style=for-the-badge&logo=material-design&logoColor=white)
+
+## ✨ Features
+
+**🚗 Vehicle Owner**
+- 🚘 Multi-vehicle registration with weekly fuel quotas
+- 🗺️ Interactive fuel station map with custom markers and directions
+- 📅 Slot booking with date/time selection and availability display
+- 💳 Payment flow with card saving and cash option
+- 🔳 QR code generation for station verification
+- 📊 Real-time quota dashboard with usage tracking
+
+**⛽ Station Attendant**
+- 📋 Booking management dashboard with stats and filters
+- 📷 QR scanner with validation and litres dispensing
+- 🔍 Vehicle lookup for quota verification
+- 📍 Geofence alerts when customers approach the station
+
+**🏛️ Government Admin**
+- 📈 National fuel distribution analytics
+- 🏆 Station performance metrics and rankings
+- 🌍 Regional demand heatmap
+- 👥 User insights and top customer tracking
+- 🌱 Quota forecasting with CO2 emissions estimation
+
+## 📂 Folder Structure
+
+```
+fuelq/
+├── lib/
+│   ├── core/                  # Theme, router, constants, utils
+│   ├── features/
+│   │   ├── auth/              # Authentication, registration, profile
+│   │   ├── booking/           # Slot booking engine
+│   │   ├── dashboard/         # Quota dashboard
+│   │   ├── map/               # Google Maps station finder
+│   │   ├── payment/           # Card and cash payment
+│   │   ├── qr/                # QR generation and scanning service
+│   │   ├── station_attendant/ # Attendant dashboard, QR scanner
+│   │   ├── notifications/     # Geofence alerts, push notifications
+│   │   └── analytics/         # Government admin analytics
+│   └── shared/                # Reusable widgets
+├── assets/                    # Marker icons, images
+├── android/                   # Android platform config
+```
+
+## 🚀 Quick Start
+
+### ✅ Prerequisites
+- Flutter SDK
+- Android Studio / VS Code
+- Firebase project configured via `flutterfire configure`
+- Google Maps API key in `local.properties`
+
+### ⚙️ Setup
+```bash
+flutter pub get
+flutter run
+```
+
+### 📦 Build
+```bash
+flutter build apk
+```
+
+## 🤼 The Team
+
+- [@dwainXDL](https://github.com/dwainXDL)
+- [@PWTMihisara](https://github.com/PWTMihisara)
+- [@drnykteresteinwayne](https://github.com/drnykteresteinwayne)
+- [@thiranya123](https://github.com/thiranya123)
+- [@Yameeshaa](https://github.com/Yameeshaa)
+- [@imanthaisira-beep](https://github.com/imanthaisira-beep)
+
+## 📫 Contact
+
+If you have any feedback or questions, feel free to contact me. [@dwainXDL](https://github.com/dwainXDL)

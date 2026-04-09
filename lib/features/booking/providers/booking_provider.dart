@@ -123,13 +123,28 @@ class BookingService {
   Future<void> scanBooking({
     required String bookingId,
     required String attendantId,
+    double litresDispensed = 0,
   }) async {
+    final bookingDoc = await _firestore.collection('bookings').doc(bookingId).get();
     await _firestore.collection('bookings').doc(bookingId).update({
       'qrUsed': true,
       'scannedBy': attendantId,
       'scannedAt': Timestamp.fromDate(DateTime.now()),
       'status': BookingStatus.completed.name,
+      'litresDispensed': litresDispensed,
     });
+
+    if (litresDispensed > 0 && bookingDoc.exists) {
+      final data = bookingDoc.data()!;
+      final userId = data['userId'] as String;
+      final vehicleId = data['vehicleId'] as String;
+      final vehicleRef = _firestore.collection('users').doc(userId).collection('vehicles').doc(vehicleId);
+      final vehicleDoc = await vehicleRef.get();
+      if (vehicleDoc.exists) {
+        final currentUsed = (vehicleDoc.data()?['used'] as num?)?.toDouble() ?? 0;
+        await vehicleRef.update({'used': currentUsed + litresDispensed});
+      }
+    }
   }
 
   Future<BookingModel?> findByQrToken(String qrToken) async {

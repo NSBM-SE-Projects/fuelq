@@ -58,6 +58,55 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
     }
   }
 
+  Future<void> _showLitresDialog(BuildContext context, WidgetRef ref, BookingModel b, String attendantId) async {
+    final controller = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dispense Fuel'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${b.vehicleNumber} — ${b.fuelType[0].toUpperCase()}${b.fuelType.substring(1)}',
+                style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Litres to dispense',
+                suffixText: 'L',
+                prefixIcon: const Icon(Icons.water_drop_rounded, color: AppColors.primarySoft),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final litres = double.tryParse(controller.text.trim()) ?? 0;
+              if (litres <= 0) return;
+              Navigator.pop(ctx);
+              await ref.read(bookingServiceProvider).scanBooking(
+                    bookingId: b.id,
+                    attendantId: attendantId,
+                    litresDispensed: litres,
+                  );
+            },
+            child: const Text('Dispense', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmNoShow(BuildContext context, BookingModel booking) {
     showDialog(
       context: context,
@@ -200,32 +249,7 @@ class _TimeSlotSectionState extends ConsumerState<TimeSlotSection> {
                 HapticFeedback.mediumImpact();
                 final user = ref.read(userProvider).valueOrNull;
                 if (user != null && b.status == BookingStatus.upcoming) {
-                  await ref.read(bookingServiceProvider).scanBooking(
-                        bookingId: b.id,
-                        attendantId: user.uid,
-                      );
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${b.vehicleNumber} marked as completed'),
-                        backgroundColor: AppColors.success,
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          textColor: Colors.white,
-                          onPressed: () => ref
-                              .read(firestoreProvider)
-                              .collection('bookings')
-                              .doc(b.id)
-                              .update({
-                            'status': BookingStatus.upcoming.name,
-                            'qrUsed': false,
-                            'scannedBy': null,
-                            'scannedAt': null,
-                          }),
-                        ),
-                      ),
-                    );
-                  }
+                  await _showLitresDialog(context, ref, b, user.uid);
                 }
               } else {
                 _confirmNoShow(context, b);
